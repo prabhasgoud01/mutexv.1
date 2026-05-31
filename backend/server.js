@@ -60,6 +60,14 @@ app.get('/', (req, res) => {
   res.send('API is running...');
 });
 
+// Temporary Health Check Route
+app.get("/api/test", (req, res) => {
+  res.json({
+    success: true,
+    message: "Backend Working"
+  });
+});
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
