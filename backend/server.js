@@ -36,7 +36,8 @@ app.use(
       'http://localhost:5173', 
       'http://127.0.0.1:5173', 
       process.env.CLIENT_URL,
-      'https://mutexv-1-1.onrender.com'
+      'https://mutexv-1-1.onrender.com',
+      'https://mutexv-1.vercel.app'
     ].filter(Boolean),
     credentials: true,
   })
