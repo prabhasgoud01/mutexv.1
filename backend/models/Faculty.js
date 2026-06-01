@@ -62,6 +62,18 @@ const facultySchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    specialization: {
+      type: String,
+      default: '',
+    },
+    positionRole: {
+      type: String,
+      default: 'Faculty',
+    },
+    blocked: {
+      type: Boolean,
+      default: false,
+    },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
   },

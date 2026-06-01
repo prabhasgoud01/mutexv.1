@@ -15,6 +15,9 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
   // Not logged in
   if (!user) {
+    if (allowedRoles && allowedRoles.length > 0) {
+      return <Navigate to={`/${allowedRoles[0]}-login`} replace />;
+    }
     return <Navigate to="/student-login" replace />;
   }
 

@@ -111,6 +111,8 @@ export const uploadFaculty = async (req, res) => {
     const defaultPassword = 'sai111';
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
     
+    console.log("Parsed Faculty:", records);
+
     const facultyToInsert = [];
     
     for (const rawRecord of records) {
@@ -124,17 +126,24 @@ export const uploadFaculty = async (req, res) => {
 
       console.log('Parsed normalized faculty record:', record);
 
-      if (!record.email || !record.name) continue; // Skip invalid rows
+      if (!record.email || !record.name) {
+        continue;
+      }
       
-      facultyToInsert.push({
+      const mappedFaculty = {
         name: record.name,
         email: record.email.toLowerCase(),
         password: hashedPassword,
         role: 'faculty',
         facultyId: record.facultyid || record.faculty_id || '',
         department: record.department || record.branch || '',
+        specialization: record.specialization || '',
+        positionRole: record.positionrole || record.position || 'Faculty',
         isFirstLogin: true,
-      });
+      };
+
+      console.log('Valid Faculty:', mappedFaculty);
+      facultyToInsert.push(mappedFaculty);
     }
 
     if (facultyToInsert.length === 0) {

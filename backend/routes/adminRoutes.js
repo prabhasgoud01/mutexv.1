@@ -3,6 +3,9 @@ import {
   getUsers,
   getStudents,
   toggleStudentBlock,
+  getFaculty,
+  toggleFacultyBlock,
+  deleteFaculty,
   deleteUser,
   updateUserRole,
 } from '../controllers/adminController.js';
@@ -22,6 +25,9 @@ router.use(authorizeRoles('admin'));
 router.get('/users', getUsers);
 router.get('/students', getStudents);
 router.put('/student/block/:id', toggleStudentBlock);
+router.get('/faculty', getFaculty);
+router.put('/faculty/block/:id', toggleFacultyBlock);
+router.delete('/faculty/:id', deleteFaculty);
 router.delete('/user/:id', deleteUser);
 router.put('/role/:id', updateUserRole);
 

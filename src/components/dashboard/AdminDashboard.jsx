@@ -102,10 +102,9 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
   };
 
   useEffect(() => {
-    if (activeSubTab === 'all-students') {
-      fetchStudents();
-    }
-  }, [activeSubTab]);
+    fetchStudents();
+    fetchFaculty();
+  }, []);
   const [newStudName, setNewStudName] = useState('');
   const [newStudEmail, setNewStudEmail] = useState('');
   const [newStudDept, setNewStudDept] = useState('Computer Science');
@@ -187,11 +186,40 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
   };
 
   // 2. Faculty States & Handlers
-  const [facultyList, setFacultyList] = useState([
-    { id: 201, name: 'Dr. Sarah Jenkins', email: 'sarah.jenkins@gmail.com', specialization: 'Machine Learning', position: 'HOD', department: 'Computer Science', phoneNumber: '+1 234 567 8801' },
-    { id: 202, name: 'Prof. Michael Chang', email: 'michael.chang@gmail.com', specialization: 'Theory of Computation', position: 'Principal', department: 'Information Technology', phoneNumber: '+1 234 567 8802' },
-    { id: 203, name: 'Dr. Raymond Floyd', email: 'raymond.floyd@gmail.com', specialization: 'Distributed Systems', position: 'Faculty', department: 'Electrical Engineering', phoneNumber: '+1 234 567 8803' },
-  ]);
+  const [facultyList, setFacultyList] = useState([]);
+  const [facultySearchQuery, setFacultySearchQuery] = useState('');
+  const [facultyDeptFilter, setFacultyDeptFilter] = useState('All');
+  const [facultySpecFilter, setFacultySpecFilter] = useState('All');
+  const [facultyStateFilter, setFacultyStateFilter] = useState('All');
+
+  const fetchFaculty = async () => {
+    try {
+      const res = await api.get('/admin/faculty');
+      const mapped = res.data.map(f => ({
+        ...f,
+        id: f._id,
+        position: f.positionRole || 'Faculty',
+        specialization: f.specialization || 'N/A',
+        phoneNumber: f.phoneNumber || 'N/A'
+      }));
+      setFacultyList(mapped);
+    } catch (error) {
+      console.error('Failed to fetch faculty', error);
+      triggerLocalToast('error', 'Failed to load faculty');
+    }
+  };
+
+  const toggleBlockFaculty = async (id) => {
+    try {
+      const res = await api.put(`/admin/faculty/block/${id}`);
+      setFacultyList(facultyList.map(f => f.id === id ? { ...f, blocked: res.data.blocked } : f));
+      triggerLocalToast('info', 'Faculty status adjusted.');
+    } catch (error) {
+      console.error('Failed to toggle block status', error);
+      triggerLocalToast('error', 'Failed to update status');
+    }
+  };
+
   const [newFacName, setNewFacName] = useState('');
   const [newFacEmail, setNewFacEmail] = useState('');
   const [newFacSpec, setNewFacSpec] = useState('');
@@ -1113,36 +1141,49 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50 text-xs">
-                            {users.map(u => (
-                              <tr key={u.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20 transition-colors">
-                                <td className="px-6 py-4">
-                                  <div className="font-bold text-slate-800 dark:text-slate-100">{u.name}</div>
-                                  <div className="text-[10px] text-slate-400 mt-0.5">{u.email}</div>
-                                </td>
-                                <td className="px-6 py-4 font-semibold">{u.role}</td>
-                                <td className="px-6 py-4">
-                                  <span className={`inline-block px-2.5 py-0.5 rounded-full font-bold text-[9px] ${
-                                    u.status === 'Active'
-                                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400'
-                                      : 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400'
-                                  }`}>
-                                    {u.status}
-                                  </span>
-                                </td>
-                                <td className="px-6 py-4 text-right">
-                                  <button
-                                    onClick={() => toggleUserStatus(u.id)}
-                                    className={`px-3 py-1.5 rounded-lg font-bold text-[10px] cursor-pointer transition-all active:scale-95 ${
+                            {(() => {
+                              const activeStudents = studentsList.filter(s => !s.blocked).map(s => ({ id: s.id, name: s.name, email: s.email, role: 'Student', status: 'Active', original: s }));
+                              const activeFaculty = facultyList.filter(f => !f.blocked).map(f => ({ id: f.id, name: f.name, email: f.email, role: f.position || 'Faculty', status: 'Active', original: f }));
+                              const activeSystemUsers = [...activeStudents, ...activeFaculty];
+                              
+                              if (activeSystemUsers.length === 0) {
+                                return (
+                                  <tr>
+                                    <td colSpan={4} className="px-6 py-8 text-center text-slate-400 font-semibold">No active students or faculty found.</td>
+                                  </tr>
+                                );
+                              }
+
+                              return activeSystemUsers.map(u => (
+                                <tr key={`user-${u.id}`} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20 transition-colors">
+                                  <td className="px-6 py-4">
+                                    <div className="font-bold text-slate-800 dark:text-slate-100">{u.name}</div>
+                                    <div className="text-[10px] text-slate-400 mt-0.5">{u.email}</div>
+                                  </td>
+                                  <td className="px-6 py-4 font-semibold">{u.role}</td>
+                                  <td className="px-6 py-4">
+                                    <span className={`inline-block px-2.5 py-0.5 rounded-full font-bold text-[9px] ${
                                       u.status === 'Active'
-                                        ? 'bg-slate-100 dark:bg-slate-800 hover:bg-rose-500/10 hover:text-rose-500'
-                                        : 'bg-rose-600 text-white shadow-md shadow-rose-600/10 hover:brightness-110'
-                                    }`}
-                                  >
-                                    {u.status === 'Active' ? 'Suspend' : 'Activate'}
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
+                                        ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400'
+                                        : 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400'
+                                    }`}>
+                                      {u.status}
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-4 text-right">
+                                    <button
+                                      onClick={() => {
+                                        if (u.role === 'Student') toggleBlockStudent(u.id);
+                                        else toggleBlockFaculty(u.id);
+                                      }}
+                                      className="px-3 py-1.5 rounded-lg font-bold text-[10px] cursor-pointer transition-all active:scale-95 bg-slate-100 dark:bg-slate-800 hover:bg-rose-500/10 hover:text-rose-500"
+                                    >
+                                      Suspend
+                                    </button>
+                                  </td>
+                                </tr>
+                              ));
+                            })()}
                           </tbody>
                         </table>
                       </div>
@@ -1327,10 +1368,26 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
               {/* VIEW 5: ALL FACULTY */}
               {activeSubTab === 'all-faculty' && (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-bold font-heading flex items-center gap-2">
-                    <GraduationCap className="w-5 h-5 text-rose-500" />
-                    Academic Faculty Roster
-                  </h3>
+                  <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                    <h3 className="text-lg font-bold font-heading flex items-center gap-2 shrink-0">
+                      <GraduationCap className="w-5 h-5 text-rose-500" />
+                      Academic Faculty Roster
+                    </h3>
+                    <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                      <input type="text" placeholder="Search name, email..." value={facultySearchQuery} onChange={(e) => setFacultySearchQuery(e.target.value)} className="px-4 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:outline-none focus:border-rose-500 min-w-[220px]" />
+                      <select value={facultyDeptFilter} onChange={(e) => setFacultyDeptFilter(e.target.value)} className="px-4 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:outline-none focus:border-rose-500">
+                        <option value="All">All Departments</option>
+                        <option value="Computer Science">Computer Science</option>
+                        <option value="Information Technology">Information Technology</option>
+                        <option value="Electrical Engineering">Electrical Engineering</option>
+                      </select>
+                      <select value={facultyStateFilter} onChange={(e) => setFacultyStateFilter(e.target.value)} className="px-4 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:outline-none focus:border-rose-500">
+                        <option value="All">All States</option>
+                        <option value="Active">Active</option>
+                        <option value="Blocked">Blocked</option>
+                      </select>
+                    </div>
+                  </div>
                   <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden overflow-x-auto">
                     <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
                       <thead className="bg-slate-50 dark:bg-slate-950 text-[10px] font-bold text-slate-400 uppercase">
@@ -1339,12 +1396,19 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                           <th className="px-6 py-4">Email</th>
                           <th className="px-6 py-4">Department</th>
                           <th className="px-6 py-4">Specialization</th>
-                          <th className="px-6 py-4">Phone</th>
+                          <th className="px-6 py-4">Phone Number</th>
                           <th className="px-6 py-4">Position Role</th>
+                          <th className="px-6 py-4">State</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-                        {facultyList.map(f => (
+                        {facultyList.filter(f => {
+                          const matchesSearch = f.name.toLowerCase().includes(facultySearchQuery.toLowerCase()) || 
+                                                f.email.toLowerCase().includes(facultySearchQuery.toLowerCase());
+                          const matchesDept = facultyDeptFilter === 'All' || f.department === facultyDeptFilter;
+                          const matchesState = facultyStateFilter === 'All' || (facultyStateFilter === 'Blocked' ? f.blocked : !f.blocked);
+                          return matchesSearch && matchesDept && matchesState;
+                        }).map(f => (
                           <tr key={f.id}>
                             <td className="px-6 py-4 font-bold">{f.name}</td>
                             <td className="px-6 py-4 text-slate-500 font-semibold">{f.email}</td>
@@ -1356,8 +1420,21 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                                 {f.position}
                               </span>
                             </td>
+                            <td className="px-6 py-4">
+                              <button 
+                                onClick={() => toggleBlockFaculty(f.id)}
+                                className={`px-4 py-1.5 rounded-full font-bold text-xs transition-colors cursor-pointer ${f.blocked ? 'bg-rose-500/10 text-rose-500 hover:bg-rose-500/20' : 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20'}`}
+                              >
+                                {f.blocked ? 'Blocked' : 'Active'}
+                              </button>
+                            </td>
                           </tr>
                         ))}
+                        {facultyList.length === 0 && (
+                          <tr>
+                            <td colSpan={7} className="px-6 py-8 text-center text-slate-400 font-semibold">No faculty found matching your criteria.</td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>

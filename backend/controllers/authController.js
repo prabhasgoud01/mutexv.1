@@ -37,7 +37,7 @@ export const registerUser = async (req, res) => {
     });
 
     if (user) {
-      generateToken(res, user._id, user.role);
+      const token = generateToken(res, user._id, user.role);
       res.status(201).json({
         _id: user._id,
         name: user.name,
@@ -46,6 +46,7 @@ export const registerUser = async (req, res) => {
         profilePhoto: user.profilePhoto,
         collegeName: user.collegeName,
         location: user.location,
+        token,
       });
     } else {
       res.status(400).json({ message: 'Invalid user data' });
@@ -86,7 +87,7 @@ export const loginUser = async (req, res) => {
         });
       }
 
-      generateToken(res, user._id, user.role);
+      const token = generateToken(res, user._id, user.role);
 
       res.json({
         _id: user._id,
@@ -95,6 +96,7 @@ export const loginUser = async (req, res) => {
         role: user.role,
         profilePhoto: user.profilePhoto,
         isFirstLogin: user.isFirstLogin,
+        token,
       });
     } else {
       res.status(401).json({ message: 'Invalid email or password' });
@@ -287,7 +289,7 @@ export const resetPassword = async (req, res) => {
     await user.save();
 
     // Log the user in implicitly by returning a new token
-    generateToken(res, user._id, user.role);
+    const token = generateToken(res, user._id, user.role);
 
     res.status(200).json({
       success: true,
@@ -297,7 +299,8 @@ export const resetPassword = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-      }
+      },
+      token,
     });
   } catch (error) {
     console.error(error);

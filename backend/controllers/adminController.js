@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import Student from '../models/Student.js';
+import Faculty from '../models/Faculty.js';
 
 // @desc    Get all users (admin only)
 // @route   GET /api/admin/users
@@ -40,6 +41,53 @@ export const toggleStudentBlock = async (req, res) => {
     }
   } catch (error) {
     res.status(500).json({ message: 'Server error updating student block state' });
+  }
+};
+
+// @desc    Get all faculty
+// @route   GET /api/admin/faculty
+// @access  Private/Admin
+export const getFaculty = async (req, res) => {
+  try {
+    const faculty = await Faculty.find({}).select('+password');
+    res.json(faculty);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error retrieving faculty' });
+  }
+};
+
+// @desc    Toggle Faculty Block State
+// @route   PUT /api/admin/faculty/block/:id
+// @access  Private/Admin
+export const toggleFacultyBlock = async (req, res) => {
+  try {
+    const faculty = await Faculty.findById(req.params.id);
+    if (faculty) {
+      faculty.blocked = !faculty.blocked;
+      const updatedFaculty = await faculty.save();
+      res.json(updatedFaculty);
+    } else {
+      res.status(404).json({ message: 'Faculty not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Server error updating faculty block state' });
+  }
+};
+
+// @desc    Delete faculty
+// @route   DELETE /api/admin/faculty/:id
+// @access  Private/Admin
+export const deleteFaculty = async (req, res) => {
+  try {
+    const faculty = await Faculty.findById(req.params.id);
+    if (faculty) {
+      await Faculty.deleteOne({ _id: faculty._id });
+      res.json({ message: 'Faculty removed' });
+    } else {
+      res.status(404).json({ message: 'Faculty not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Server error deleting faculty' });
   }
 };
 

@@ -11,10 +11,19 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkUserLoggedIn = async () => {
       try {
+        const token = localStorage.getItem('token');
+        if (token) {
+          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        }
+        
         const { data } = await api.get('/auth/me');
         setUser(data);
       } catch (error) {
-        setUser(null); // No valid session found
+        // No valid session found or token expired
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        delete api.defaults.headers.common['Authorization'];
+        setUser(null); 
       } finally {
         setLoading(false);
       }
@@ -23,6 +32,9 @@ export const AuthProvider = ({ children }) => {
 
     // Listen for unauthorized events to automatically logout
     const handleUnauthorized = () => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('role');
+      delete api.defaults.headers.common['Authorization'];
       setUser(null);
     };
     window.addEventListener('unauthorized', handleUnauthorized);
@@ -36,6 +48,13 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password, portalRole) => {
     try {
       const { data } = await api.post('/auth/login', { email, password, portalRole });
+      
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('role', data.role);
+        api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
+      }
+      
       setUser(data);
       return { success: true, user: data };
     } catch (error) {
@@ -50,6 +69,13 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       const { data } = await api.post('/auth/register', userData);
+      
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('role', data.role);
+        api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
+      }
+      
       setUser(data);
       return { success: true, user: data };
     } catch (error) {
@@ -64,10 +90,13 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       await api.post('/auth/logout');
-      setUser(null);
     } catch (error) {
       console.error('Logout error', error);
-      setUser(null); // Clear local state anyway
+    } finally {
+      localStorage.removeItem('token');
+      localStorage.removeItem('role');
+      delete api.defaults.headers.common['Authorization'];
+      setUser(null);
     }
   };
 
