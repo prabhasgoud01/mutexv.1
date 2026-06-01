@@ -82,7 +82,11 @@ export default function AdminLogin() {
 
     if (result.success) {
       triggerToast('success', `Welcome back, ${result.user.name}! Logged in successfully.`);
-      navigate('/dashboard/admin');
+      if (result.user.isFirstLogin) {
+        navigate('/change-password');
+      } else {
+        navigate('/dashboard/admin');
+      }
     } else {
       triggerToast('error', result.message || 'Login failed. Please check your credentials.');
     }

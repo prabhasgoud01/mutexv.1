@@ -9,6 +9,7 @@ import FacultySignup from './pages/FacultySignup';
 import AdminSignup from './pages/AdminSignup';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import ChangePassword from './pages/ChangePassword';
 import ProtectedRoute from './routes/ProtectedRoute';
 import Dashboard from './components/Dashboard';
 
@@ -37,6 +38,7 @@ export default function App() {
           <Route path="/admin-signup" element={<AdminSignup />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
+          <Route path="/change-password" element={<ChangePassword />} />
 
           {/* Dashboards */}
           <Route

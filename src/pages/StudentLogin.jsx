@@ -82,7 +82,11 @@ export default function StudentLogin() {
 
     if (result.success) {
       triggerToast('success', `Welcome back, ${result.user.name}! Logged in successfully.`);
-      navigate('/dashboard/student');
+      if (result.user.isFirstLogin) {
+        navigate('/change-password');
+      } else {
+        navigate('/dashboard/student');
+      }
     } else {
       triggerToast('error', result.message || 'Login failed. Please check your credentials.');
     }

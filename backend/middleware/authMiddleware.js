@@ -1,5 +1,7 @@
 import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
+import Admin from '../models/Admin.js';
+import Faculty from '../models/Faculty.js';
+import Student from '../models/Student.js';
 
 // Protect routes - Verify JWT Token
 export const protect = async (req, res, next) => {
@@ -17,8 +19,14 @@ export const protect = async (req, res, next) => {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
-      // Get user from the token (exclude password)
-      req.user = await User.findById(decoded.userId).select('-password');
+      // Get user from the token based on role (exclude password)
+      if (decoded.role === 'admin') {
+        req.user = await Admin.findById(decoded.userId).select('-password');
+      } else if (decoded.role === 'faculty') {
+        req.user = await Faculty.findById(decoded.userId).select('-password');
+      } else {
+        req.user = await Student.findById(decoded.userId).select('-password');
+      }
       
       if (!req.user) {
         return res.status(401).json({ message: 'Not authorized, user not found' });

@@ -1,7 +1,16 @@
-import User from '../models/User.js';
+import Admin from '../models/Admin.js';
+import Faculty from '../models/Faculty.js';
+import Student from '../models/Student.js';
 import generateToken from '../utils/generateToken.js';
 import crypto from 'crypto';
 import { sendEmail } from '../config/mail.js';
+
+// Helper to get model by role
+const getModelByRole = (role) => {
+  if (role === 'admin') return Admin;
+  if (role === 'faculty') return Faculty;
+  return Student;
+};
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
@@ -9,23 +18,26 @@ import { sendEmail } from '../config/mail.js';
 export const registerUser = async (req, res) => {
   try {
     const { name, email, password, role, collegeName, location } = req.body;
+    const userRole = role || 'student';
 
-    const userExists = await User.findOne({ email });
+    const Model = getModelByRole(userRole);
+
+    const userExists = await Model.findOne({ email });
     if (userExists) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    const user = await User.create({
+    const user = await Model.create({
       name,
       email,
       password,
-      role: role || 'student', // Default to student
+      role: userRole,
       collegeName,
       location,
     });
 
     if (user) {
-      generateToken(res, user._id);
+      generateToken(res, user._id, user.role);
       res.status(201).json({
         _id: user._id,
         name: user.name,
@@ -55,7 +67,9 @@ export const loginUser = async (req, res) => {
   try {
     const { email, password, portalRole } = req.body;
 
-    const user = await User.findOne({ email }).select('+password');
+    const Model = getModelByRole(portalRole);
+
+    const user = await Model.findOne({ email }).select('+password');
 
     if (user && (await user.matchPassword(password))) {
       // Verify role matches login portal
@@ -65,7 +79,14 @@ export const loginUser = async (req, res) => {
         });
       }
 
-      generateToken(res, user._id);
+      // Check if user is blocked
+      if (user.blocked) {
+        return res.status(403).json({
+          message: 'Your account has been blocked by an administrator.'
+        });
+      }
+
+      generateToken(res, user._id, user.role);
 
       res.json({
         _id: user._id,
@@ -73,6 +94,7 @@ export const loginUser = async (req, res) => {
         email: user.email,
         role: user.role,
         profilePhoto: user.profilePhoto,
+        isFirstLogin: user.isFirstLogin,
       });
     } else {
       res.status(401).json({ message: 'Invalid email or password' });
@@ -112,6 +134,7 @@ export const getMe = async (req, res) => {
       bio: req.user.bio,
       employeeId: req.user.employeeId,
       dateOfBirth: req.user.dateOfBirth,
+      isFirstLogin: req.user.isFirstLogin,
     };
     res.status(200).json(user);
   } catch (error) {
@@ -125,7 +148,8 @@ export const getMe = async (req, res) => {
 // @access  Private
 export const updateProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
+    const Model = getModelByRole(req.user.role);
+    const user = await Model.findById(req.user._id);
 
     if (user) {
       user.name = req.body.name || user.name;
@@ -168,7 +192,10 @@ export const updateProfile = async (req, res) => {
 // @access  Public
 export const forgotPassword = async (req, res) => {
   try {
-    const user = await User.findOne({ email: req.body.email });
+    // Check all collections sequentially since we don't know the role from email alone
+    let user = await Student.findOne({ email: req.body.email });
+    if (!user) user = await Faculty.findOne({ email: req.body.email });
+    if (!user) user = await Admin.findOne({ email: req.body.email });
 
     if (!user) {
       return res.status(404).json({ message: 'There is no user with that email' });
@@ -228,10 +255,25 @@ export const resetPassword = async (req, res) => {
       .update(req.params.token)
       .digest('hex');
 
-    const user = await User.findOne({
+    // Check all collections
+    let user = await Student.findOne({
       resetPasswordToken,
       resetPasswordExpire: { $gt: Date.now() },
     });
+    
+    if (!user) {
+      user = await Faculty.findOne({
+        resetPasswordToken,
+        resetPasswordExpire: { $gt: Date.now() },
+      });
+    }
+    
+    if (!user) {
+      user = await Admin.findOne({
+        resetPasswordToken,
+        resetPasswordExpire: { $gt: Date.now() },
+      });
+    }
 
     if (!user) {
       return res.status(400).json({ message: 'Invalid or expired token' });
@@ -245,7 +287,7 @@ export const resetPassword = async (req, res) => {
     await user.save();
 
     // Log the user in implicitly by returning a new token
-    generateToken(res, user._id);
+    generateToken(res, user._id, user.role);
 
     res.status(200).json({
       success: true,
@@ -260,5 +302,38 @@ export const resetPassword = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error during password reset' });
+  }
+};
+
+// @desc    Change Password First Login
+// @route   POST /api/auth/first-login-change-password
+// @access  Private
+export const changePasswordFirstLogin = async (req, res) => {
+  try {
+    const { password } = req.body;
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
+    const Model = getModelByRole(req.user.role);
+    const user = await Model.findById(req.user._id).select('+password');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.password = password;
+    user.isFirstLogin = false;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Password updated successfully',
+      isFirstLogin: false
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error during password change' });
   }
 };

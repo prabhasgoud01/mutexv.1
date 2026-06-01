@@ -45,6 +45,8 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
     dateOfBirth: user?.dateOfBirth || 'May 12, 1990'
   });
   const fileInputRef = useRef(null);
+  const studentUploadRef = useRef(null);
+  const facultyUploadRef = useRef(null);
 
   // Collapsible Accordions State
   const [accordions, setAccordions] = useState({
@@ -81,12 +83,29 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
   }, []);
 
   // 1. Students States & Handlers
-  const [studentsList, setStudentsList] = useState([
-    { id: 101, name: 'Alex Johnson', email: 'alex@gmail.com', semester: 'Spring 2026', blocked: false, department: 'Computer Science', section: 'A', rollNumber: 'CS26001', phoneNumber: '+1 234 567 8901' },
-    { id: 102, name: 'Sophia Martinez', email: 'sophia@gmail.com', semester: 'Spring 2026', blocked: true, department: 'Information Technology', section: 'B', rollNumber: 'IT26002', phoneNumber: '+1 234 567 8902' },
-    { id: 103, name: 'Liam Chen', email: 'liam@gmail.com', semester: 'Spring 2026', blocked: false, department: 'Electrical Engineering', section: 'A', rollNumber: 'EE26003', phoneNumber: '+1 234 567 8903' },
-    { id: 104, name: 'Emma Watson', email: 'emma@gmail.com', semester: 'Spring 2026', blocked: false, department: 'Computer Science', section: 'C', rollNumber: 'CS26004', phoneNumber: '+1 234 567 8904' }
-  ]);
+  const [studentsList, setStudentsList] = useState([]);
+
+  const fetchStudents = async () => {
+    try {
+      const res = await api.get('/admin/students');
+      // map backend id to front end expected properties
+      const mapped = res.data.map(s => ({
+        ...s,
+        id: s._id,
+        rollNumber: s.studentId || s.rollNumber || 'N/A'
+      }));
+      setStudentsList(mapped);
+    } catch (error) {
+      console.error('Failed to fetch students', error);
+      triggerLocalToast('error', 'Failed to load students');
+    }
+  };
+
+  useEffect(() => {
+    if (activeSubTab === 'all-students') {
+      fetchStudents();
+    }
+  }, [activeSubTab]);
   const [newStudName, setNewStudName] = useState('');
   const [newStudEmail, setNewStudEmail] = useState('');
   const [newStudDept, setNewStudDept] = useState('Computer Science');
@@ -136,9 +155,35 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
     triggerLocalToast('success', 'Student added successfully!');
   };
 
-  const toggleBlockStudent = (id) => {
-    setStudentsList(studentsList.map(s => s.id === id ? { ...s, blocked: !s.blocked } : s));
-    triggerLocalToast('info', 'Student status adjusted.');
+  const toggleBlockStudent = async (id) => {
+    try {
+      const res = await api.put(`/admin/student/block/${id}`);
+      setStudentsList(studentsList.map(s => s.id === id ? { ...s, blocked: res.data.blocked } : s));
+      triggerLocalToast('info', 'Student status adjusted.');
+    } catch (error) {
+      console.error('Failed to toggle block status', error);
+      triggerLocalToast('error', 'Failed to update status');
+    }
+  };
+
+  const handleStudentBulkUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      triggerLocalToast('info', 'Uploading and processing students...');
+      const res = await api.post('/admin/upload-students', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      triggerLocalToast('success', res.data.message || 'Students uploaded successfully!');
+      // In a real app, you would fetch updated students list here
+    } catch (error) {
+      triggerLocalToast('error', error.response?.data?.message || 'Failed to upload students.');
+    } finally {
+      if (studentUploadRef.current) studentUploadRef.current.value = '';
+    }
   };
 
   // 2. Faculty States & Handlers
@@ -178,6 +223,26 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
     setNewFacDept('Computer Science');
     setActiveSubTab('all-faculty');
     triggerLocalToast('success', 'Faculty added successfully!');
+  };
+
+  const handleFacultyBulkUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      triggerLocalToast('info', 'Uploading and processing faculty...');
+      const res = await api.post('/admin/upload-faculty', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      triggerLocalToast('success', res.data.message || 'Faculty uploaded successfully!');
+      // In a real app, you would fetch updated faculty list here
+    } catch (error) {
+      triggerLocalToast('error', error.response?.data?.message || 'Failed to upload faculty.');
+    } finally {
+      if (facultyUploadRef.current) facultyUploadRef.current.value = '';
+    }
   };
 
   // 3. Departments States
@@ -1114,36 +1179,37 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                     <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
                       <thead className="bg-slate-50 dark:bg-slate-950 text-[10px] font-bold text-slate-400 uppercase">
                         <tr>
+                          <th className="px-6 py-4">Student ID</th>
                           <th className="px-6 py-4">Name</th>
-                          <th className="px-6 py-4">Roll No.</th>
-                          <th className="px-6 py-4">Branch</th>
-                          <th className="px-6 py-4">Section</th>
                           <th className="px-6 py-4">Email</th>
-                          <th className="px-6 py-4">Phone</th>
-                          <th className="px-6 py-4">Active Term</th>
+                          <th className="px-6 py-4">Role</th>
+                          <th className="px-6 py-4">Department</th>
+                          <th className="px-6 py-4">Password Hash</th>
                           <th className="px-6 py-4">State</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
                         {filteredStudents.map(s => (
                           <tr key={s.id}>
+                            <td className="px-6 py-4 font-mono text-slate-500">{s.rollNumber || s.studentId || 'N/A'}</td>
                             <td className="px-6 py-4 font-bold">{s.name}</td>
-                            <td className="px-6 py-4 font-mono text-slate-500">{s.rollNumber}</td>
-                            <td className="px-6 py-4 font-semibold">{s.department}</td>
-                            <td className="px-6 py-4 font-bold">{s.section}</td>
                             <td className="px-6 py-4 font-semibold text-slate-500">{s.email}</td>
-                            <td className="px-6 py-4 text-slate-500">{s.phoneNumber}</td>
-                            <td className="px-6 py-4">{s.semester}</td>
+                            <td className="px-6 py-4 font-semibold">{s.role || 'student'}</td>
+                            <td className="px-6 py-4 font-semibold text-slate-500">{s.department || 'N/A'}</td>
+                            <td className="px-6 py-4 font-mono text-slate-400 text-[10px] truncate max-w-[150px]">{s.password || '******'}</td>
                             <td className="px-6 py-4">
-                              <span className={`px-2 py-0.5 rounded font-bold text-[9px] ${s.blocked ? 'bg-rose-500/10 text-rose-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                              <button 
+                                onClick={() => toggleBlockStudent(s.id)}
+                                className={`px-4 py-1.5 rounded-full font-bold text-xs transition-colors cursor-pointer ${s.blocked ? 'bg-rose-500/10 text-rose-500 hover:bg-rose-500/20' : 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20'}`}
+                              >
                                 {s.blocked ? 'Blocked' : 'Active'}
-                              </span>
+                              </button>
                             </td>
                           </tr>
                         ))}
                         {filteredStudents.length === 0 && (
                           <tr>
-                            <td colSpan={8} className="px-6 py-8 text-center text-slate-400 font-semibold">No students found matching your criteria.</td>
+                            <td colSpan={7} className="px-6 py-8 text-center text-slate-400 font-semibold">No students found matching your criteria.</td>
                           </tr>
                         )}
                       </tbody>
@@ -1202,7 +1268,8 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                     Bulk Data Upload (CSV / Excel)
                   </h3>
                   <div className="p-6 md:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-sm space-y-6 text-center">
-                    <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-10 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer flex flex-col items-center justify-center gap-4">
+                    <input type="file" ref={studentUploadRef} className="hidden" accept=".csv, .xls, .xlsx" onChange={handleStudentBulkUpload} />
+                    <div onClick={() => studentUploadRef.current?.click()} className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-10 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer flex flex-col items-center justify-center gap-4">
                       <div className="p-4 bg-indigo-50 dark:bg-indigo-900/30 rounded-full text-indigo-500">
                         <UploadCloud className="w-8 h-8" />
                       </div>
@@ -1211,7 +1278,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                         <p className="text-xs text-slate-500 mt-1">Accepts .csv, .xls, .xlsx files</p>
                       </div>
                     </div>
-                    <button onClick={() => triggerLocalToast('success', 'File processed successfully!')} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95">
+                    <button onClick={() => studentUploadRef.current?.click()} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95">
                       Process Upload
                     </button>
                   </div>
@@ -1347,7 +1414,8 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                     Bulk Data Upload (CSV / Excel)
                   </h3>
                   <div className="p-6 md:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-sm space-y-6 text-center">
-                    <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-10 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer flex flex-col items-center justify-center gap-4">
+                    <input type="file" ref={facultyUploadRef} className="hidden" accept=".csv, .xls, .xlsx" onChange={handleFacultyBulkUpload} />
+                    <div onClick={() => facultyUploadRef.current?.click()} className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-10 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer flex flex-col items-center justify-center gap-4">
                       <div className="p-4 bg-indigo-50 dark:bg-indigo-900/30 rounded-full text-indigo-500">
                         <UploadCloud className="w-8 h-8" />
                       </div>
@@ -1356,7 +1424,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                         <p className="text-xs text-slate-500 mt-1">Accepts .csv, .xls, .xlsx files</p>
                       </div>
                     </div>
-                    <button onClick={() => triggerLocalToast('success', 'Faculty roster processed successfully!')} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95">
+                    <button onClick={() => facultyUploadRef.current?.click()} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95">
                       Process Upload
                     </button>
                   </div>
