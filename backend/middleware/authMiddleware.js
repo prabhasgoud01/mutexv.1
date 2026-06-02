@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import Admin from '../models/Admin.js';
 import Faculty from '../models/Faculty.js';
 import Student from '../models/Student.js';
+import SuperAdmin from '../models/SuperAdmin.js';
 
 // Protect routes - Verify JWT Token
 export const protect = async (req, res, next) => {
@@ -20,7 +21,9 @@ export const protect = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
       // Get user from the token based on role (exclude password)
-      if (decoded.role === 'admin') {
+      if (decoded.role === 'superadmin') {
+        req.user = await SuperAdmin.findById(decoded.userId).select('-password');
+      } else if (decoded.role === 'admin') {
         req.user = await Admin.findById(decoded.userId).select('-password');
       } else if (decoded.role === 'faculty') {
         req.user = await Faculty.findById(decoded.userId).select('-password');

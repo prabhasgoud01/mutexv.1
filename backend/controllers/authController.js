@@ -1,64 +1,20 @@
 import Admin from '../models/Admin.js';
 import Faculty from '../models/Faculty.js';
 import Student from '../models/Student.js';
+import SuperAdmin from '../models/SuperAdmin.js';
+import College from '../models/College.js';
 import generateToken from '../utils/generateToken.js';
 import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import { sendEmail } from '../config/mail.js';
 
 // Helper to get model by role
 const getModelByRole = (role) => {
+  if (role === 'superadmin') return SuperAdmin;
   if (role === 'admin') return Admin;
   if (role === 'faculty') return Faculty;
   return Student;
-};
-
-// @desc    Register a new user
-// @route   POST /api/auth/register
-// @access  Public
-export const registerUser = async (req, res) => {
-  try {
-    const { name, email, password, role, collegeName, location } = req.body;
-    const userRole = role || 'student';
-
-    const Model = getModelByRole(userRole);
-
-    const userExists = await Model.findOne({ email });
-    if (userExists) {
-      return res.status(400).json({ message: 'User already exists' });
-    }
-
-    const user = await Model.create({
-      name,
-      email,
-      password,
-      role: userRole,
-      collegeName,
-      location,
-    });
-
-    if (user) {
-      const token = generateToken(res, user._id, user.role);
-      res.status(201).json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        profilePhoto: user.profilePhoto,
-        collegeName: user.collegeName,
-        location: user.location,
-        token,
-      });
-    } else {
-      res.status(400).json({ message: 'Invalid user data' });
-    }
-  } catch (error) {
-    console.error(error);
-    if (error.name === 'ValidationError') {
-      const messages = Object.values(error.errors).map(val => val.message);
-      return res.status(400).json({ message: messages.join(', ') });
-    }
-    res.status(500).json({ message: 'Server error during registration' });
-  }
 };
 
 // @desc    Auth user & get token
@@ -85,6 +41,19 @@ export const loginUser = async (req, res) => {
         return res.status(403).json({
           message: 'Your account has been blocked by an administrator.'
         });
+      }
+
+      // Check College Blocked / Subscription status
+      if (user.role !== 'superadmin' && user.collegeName) {
+        const college = await College.findOne({ name: user.collegeName });
+        if (college) {
+          if (college.isBlocked) {
+            return res.status(403).json({ message: 'Your college has been blocked by the Super Admin.' });
+          }
+          if (college.subscriptionExpiry && new Date() > new Date(college.subscriptionExpiry)) {
+            return res.status(403).json({ message: 'Your college subscription has expired. Please contact support.' });
+          }
+        }
       }
 
       const token = generateToken(res, user._id, user.role);
@@ -189,27 +158,25 @@ export const updateProfile = async (req, res) => {
   }
 };
 
-// @desc    Forgot Password
-// @route   POST /api/auth/forgot-password
-// @access  Public
-export const forgotPassword = async (req, res) => {
+// Helper to send forgot password email
+const sendRoleSpecificForgotEmail = async (user, Model, rolePath, req, res) => {
   try {
-    // Check all collections sequentially since we don't know the role from email alone
-    let user = await Student.findOne({ email: req.body.email });
-    if (!user) user = await Faculty.findOne({ email: req.body.email });
-    if (!user) user = await Admin.findOne({ email: req.body.email });
+    // Generate JWT reset token (expires in 15m)
+    const resetToken = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "15m" }
+    );
 
-    if (!user) {
-      return res.status(404).json({ message: 'There is no user with that email' });
-    }
-
-    // Get reset token
-    const resetToken = user.getResetPasswordToken();
-
+    // We can also save the token to DB for manual invalidation compatibility
+    // But since the prompt relies heavily on JWT expiry, we will use it directly.
+    // However, existing models use resetPasswordToken/Expire. We'll set them for safety.
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpire = Date.now() + 15 * 60 * 1000;
     await user.save({ validateBeforeSave: false });
 
-    // Create reset url
-    const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const resetUrl = `${clientUrl}/${rolePath}-reset-password/${resetToken}`;
 
     const message = `
       <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
@@ -225,87 +192,102 @@ export const forgotPassword = async (req, res) => {
       </div>
     `;
 
-    try {
-      await sendEmail({
-        to: user.email,
-        subject: 'Password Reset Request',
-        html: message,
-      });
+    await sendEmail({
+      to: user.email,
+      subject: 'Password Reset Request',
+      html: message,
+    });
 
-      res.status(200).json({ success: true, message: 'Email sent' });
-    } catch (err) {
-      user.resetPasswordToken = undefined;
-      user.resetPasswordExpire = undefined;
-      await user.save({ validateBeforeSave: false });
-
-      return res.status(500).json({ message: 'Email could not be sent' });
-    }
+    res.status(200).json({ success: true, message: 'Email sent' });
   } catch (error) {
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save({ validateBeforeSave: false });
     console.error(error);
-    res.status(500).json({ message: 'Server error during password reset request' });
+    return res.status(500).json({ message: 'Email could not be sent' });
   }
 };
 
-// @desc    Reset Password
-// @route   PUT /api/auth/reset-password/:token
-// @access  Public
-export const resetPassword = async (req, res) => {
+// Forgot Password Controllers
+export const superAdminForgotPassword = async (req, res) => {
+  const user = await SuperAdmin.findOne({ email: req.body.email });
+  if (!user) return res.status(404).json({ message: 'There is no user with that email' });
+  await sendRoleSpecificForgotEmail(user, SuperAdmin, 'super-admin', req, res);
+};
+
+export const adminForgotPassword = async (req, res) => {
+  const user = await Admin.findOne({ email: req.body.email });
+  if (!user) return res.status(404).json({ message: 'There is no user with that email' });
+  await sendRoleSpecificForgotEmail(user, Admin, 'admin', req, res);
+};
+
+export const facultyForgotPassword = async (req, res) => {
+  const user = await Faculty.findOne({ email: req.body.email });
+  if (!user) return res.status(404).json({ message: 'There is no user with that email' });
+  await sendRoleSpecificForgotEmail(user, Faculty, 'faculty', req, res);
+};
+
+export const studentForgotPassword = async (req, res) => {
+  const user = await Student.findOne({ email: req.body.email });
+  if (!user) return res.status(404).json({ message: 'There is no user with that email' });
+  await sendRoleSpecificForgotEmail(user, Student, 'student', req, res);
+};
+
+// Helper for Role Specific Reset
+const handleRoleSpecificReset = async (Model, expectedRole, req, res) => {
   try {
-    // Get hashed token
-    const resetPasswordToken = crypto
-      .createHash('sha256')
-      .update(req.params.token)
-      .digest('hex');
-
-    // Check all collections
-    let user = await Student.findOne({
-      resetPasswordToken,
-      resetPasswordExpire: { $gt: Date.now() },
-    });
+    const { token } = req.params;
+    let decoded;
     
-    if (!user) {
-      user = await Faculty.findOne({
-        resetPasswordToken,
-        resetPasswordExpire: { $gt: Date.now() },
-      });
-    }
-    
-    if (!user) {
-      user = await Admin.findOne({
-        resetPasswordToken,
-        resetPasswordExpire: { $gt: Date.now() },
-      });
-    }
-
-    if (!user) {
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
       return res.status(400).json({ message: 'Invalid or expired token' });
     }
 
-    // Set new password
+    if (decoded.role !== expectedRole) {
+      return res.status(400).json({ message: 'Token role mismatch' });
+    }
+
+    const user = await Model.findById(decoded.id);
+
+    // Also check if the token matches the one in DB and hasn't expired according to DB (if we want to invalidate it)
+    if (!user || user.resetPasswordToken !== token || user.resetPasswordExpire < Date.now()) {
+      return res.status(400).json({ message: 'Invalid or expired token' });
+    }
+
+    // Set new password (Model pre-save hook normally hashes it, but prompt specified using bcrypt.hash manually. We will just use the pre-save hook which relies on setting user.password, OR explicitly hash it. The prompt says "hash new password using bcrypt... bcrypt.hash(newPassword, 10)". To prevent double hashing if the model has a pre-save hook, we will just assign the password because the existing User.js has a pre-save hook. Wait, SuperAdmin model we made also has a pre-save hook! Admin, Faculty, Student also have pre-save hooks. So assigning user.password = req.body.password is the correct way, the hook will hash it.)
     user.password = req.body.password;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
 
     await user.save();
 
-    // Log the user in implicitly by returning a new token
-    const token = generateToken(res, user._id, user.role);
-
     res.status(200).json({
       success: true,
-      message: 'Password reset successful',
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
-      token,
+      message: 'Password reset successful'
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error during password reset' });
   }
+};
+
+// Reset Password Controllers
+export const superAdminResetPassword = async (req, res) => {
+  await handleRoleSpecificReset(SuperAdmin, 'superadmin', req, res);
+};
+
+export const adminResetPassword = async (req, res) => {
+  await handleRoleSpecificReset(Admin, 'admin', req, res);
+};
+
+export const facultyResetPassword = async (req, res) => {
+  await handleRoleSpecificReset(Faculty, 'faculty', req, res);
+};
+
+export const studentResetPassword = async (req, res) => {
+  await handleRoleSpecificReset(Student, 'student', req, res);
 };
 
 // @desc    Change Password First Login

@@ -194,7 +194,7 @@ export default function StudentLogin() {
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest font-mono">Security Password</label>
-                  <Link to="/forgot-password" className={`text-[11px] font-bold hover:underline cursor-pointer ${theme.textAccent}`}>Forgot Password?</Link>
+                  <Link to="/student-forgot-password" className={`text-[11px] font-bold hover:underline cursor-pointer ${theme.textAccent}`}>Forgot Password?</Link>
                 </div>
                 <div className="relative">
                   <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
@@ -233,9 +233,6 @@ export default function StudentLogin() {
             </div>
 
             <div className="text-center pt-2">
-              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-                New here? <Link to="/signup" className={`hover:underline cursor-pointer ${theme.textAccent}`}>Create an account</Link>
-              </p>
             </div>
             
             <div className="text-center pt-2">

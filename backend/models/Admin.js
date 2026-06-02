@@ -46,6 +46,10 @@ const adminSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    isFirstLogin: {
+      type: Boolean,
+      default: true,
+    },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
   },

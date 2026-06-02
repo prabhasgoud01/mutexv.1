@@ -10,12 +10,17 @@ import authRoutes from './routes/authRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
 import facultyRoutes from './routes/facultyRoutes.js';
+import superAdminRoutes from './routes/superAdminRoutes.js';
+import seedSuperAdmin from './seeder/superAdminSeeder.js';
 
 // Load env vars
 dotenv.config();
 
 // Connect to database
-connectDB();
+connectDB().then(() => {
+  // Seed Super Admin after DB connection
+  seedSuperAdmin();
+});
 
 const app = express();
 
@@ -55,6 +60,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/faculty', facultyRoutes);
+app.use('/api/super-admin', superAdminRoutes);
 
 // Base route
 app.get('/', (req, res) => {

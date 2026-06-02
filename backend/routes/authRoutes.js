@@ -1,25 +1,40 @@
 import express from 'express';
 import {
-  registerUser,
   loginUser,
   logoutUser,
   getMe,
   updateProfile,
-  forgotPassword,
-  resetPassword,
   changePasswordFirstLogin,
+  superAdminForgotPassword,
+  adminForgotPassword,
+  facultyForgotPassword,
+  studentForgotPassword,
+  superAdminResetPassword,
+  adminResetPassword,
+  facultyResetPassword,
+  studentResetPassword,
 } from '../controllers/authController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.post('/register', registerUser);
 router.post('/login', loginUser);
 router.post('/logout', protect, logoutUser);
 router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);
-router.post('/forgot-password', forgotPassword);
-router.put('/reset-password/:token', resetPassword);
+
+// Role-specific forgot password
+router.post('/super-admin-forgot-password', superAdminForgotPassword);
+router.post('/admin-forgot-password', adminForgotPassword);
+router.post('/faculty-forgot-password', facultyForgotPassword);
+router.post('/student-forgot-password', studentForgotPassword);
+
+// Role-specific reset password
+router.post('/super-admin-reset-password/:token', superAdminResetPassword);
+router.post('/admin-reset-password/:token', adminResetPassword);
+router.post('/faculty-reset-password/:token', facultyResetPassword);
+router.post('/student-reset-password/:token', studentResetPassword);
+
 router.post('/first-login-change-password', protect, changePasswordFirstLogin);
 
 export default router;
