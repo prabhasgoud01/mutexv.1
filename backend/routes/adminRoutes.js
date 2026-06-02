@@ -11,9 +11,10 @@ import {
 } from '../controllers/adminController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { authorizeRoles } from '../middleware/roleMiddleware.js';
-
 import multer from 'multer';
-import { uploadStudents, uploadFaculty } from '../controllers/uploadController.js';
+import { searchStudents, searchUsers, sendSmsBroadcast } from '../controllers/smsController.js';
+import { getSubjects, addSubject, deleteSubject, deleteMultipleSubjects } from '../controllers/subjectController.js';
+import { uploadStudents, uploadFaculty, uploadSubjects } from '../controllers/uploadController.js';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -33,5 +34,17 @@ router.put('/role/:id', updateUserRole);
 
 router.post('/upload-students', upload.single('file'), uploadStudents);
 router.post('/upload-faculty', upload.single('file'), uploadFaculty);
+
+// Subject Routes
+router.get('/subjects', getSubjects);
+router.post('/subjects', addSubject);
+router.post('/subjects/bulk-delete', deleteMultipleSubjects);
+router.delete('/subjects/:id', deleteSubject);
+router.post('/upload-subjects', upload.single('file'), uploadSubjects);
+
+// SMS Gateway Routes
+router.get('/students/search', searchStudents);
+router.get('/users/search', searchUsers);
+router.post('/send-sms', sendSmsBroadcast);
 
 export default router;

@@ -12,9 +12,14 @@ export default function SuperAdminDashboard({ user, onLogout }) {
   const [allUsers, setAllUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
-  const [activeTab, setActiveTab] = useState('overview'); // overview, colleges, users, create_admin
+  const [activeTab, setActiveTab] = useState('overview'); // overview, colleges, users, create_admin, sms_gateway
   const [newAdmin, setNewAdmin] = useState({ name: '', email: '', collegeName: '', phoneNumber: '', age: '', state: '' });
   const [isCreatingAdmin, setIsCreatingAdmin] = useState(false);
+  
+  // SMS States
+  const [smsTargetCollege, setSmsTargetCollege] = useState('');
+  const [smsBody, setSmsBody] = useState('');
+  const [smsLoading, setSmsLoading] = useState(false);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -26,7 +31,7 @@ export default function SuperAdminDashboard({ user, onLogout }) {
       ]);
       setStats(statsRes.data);
       setColleges(collegesRes.data);
-      setAllUsers(usersRes.data);
+      setAllUsers(usersRes.data.data || []);
     } catch (error) {
       setToast({ show: true, message: 'Failed to fetch data', type: 'error' });
     }
@@ -69,6 +74,30 @@ export default function SuperAdminDashboard({ user, onLogout }) {
       setToast({ show: true, message: error.response?.data?.message || 'Failed to create admin', type: 'error' });
     }
     setIsCreatingAdmin(false);
+  };
+
+  const handleSuperAdminSmsBroadcast = async (e) => {
+    e.preventDefault();
+    if (!smsTargetCollege || !smsBody.trim()) {
+      setToast({ show: true, message: 'Please select a college and enter a message', type: 'error' });
+      return;
+    }
+    
+    setSmsLoading(true);
+    try {
+      const res = await api.post('/super-admin/send-sms', {
+        targetType: 'Specific College',
+        targetCollege: smsTargetCollege,
+        message: smsBody
+      });
+      setToast({ show: true, message: res.data.message || 'SMS Broadcast completed successfully.', type: 'success' });
+      setSmsBody('');
+      setSmsTargetCollege('');
+    } catch (error) {
+      setToast({ show: true, message: error.response?.data?.message || 'Failed to send SMS.', type: 'error' });
+    } finally {
+      setSmsLoading(false);
+    }
   };
 
   const statCards = stats ? [
@@ -135,19 +164,38 @@ export default function SuperAdminDashboard({ user, onLogout }) {
         
         {/* Navigation Tabs */}
         <div className="flex space-x-1 bg-slate-900/50 p-1 rounded-xl mb-8 border border-slate-800/50 inline-flex">
-          {['overview', 'colleges', 'users', 'create_admin'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 text-sm font-medium rounded-lg capitalize transition-all ${
-                activeTab === tab 
-                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-              }`}
-            >
-              {tab.replace('_', ' ')}
-            </button>
-          ))}
+          <button 
+            onClick={() => setActiveTab('overview')}
+            className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all duration-300 ${activeTab === 'overview' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+          >
+            Overview
+          </button>
+          <button 
+            onClick={() => setActiveTab('colleges')}
+            className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all duration-300 ${activeTab === 'colleges' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+          >
+            Colleges
+          </button>
+          <button 
+            onClick={() => setActiveTab('users')}
+            className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all duration-300 ${activeTab === 'users' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+          >
+            Users
+          </button>
+          <button 
+            onClick={() => setActiveTab('create_admin')}
+            className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all duration-300 ${activeTab === 'create_admin' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+          >
+            <UserPlus className="w-4 h-4" />
+            Create Admin
+          </button>
+          <button 
+            onClick={() => setActiveTab('sms_gateway')}
+            className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all duration-300 ${activeTab === 'sms_gateway' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+          >
+            <Phone className="w-4 h-4" />
+            SMS Broadcast
+          </button>
         </div>
 
         {/* Overview Tab */}
@@ -422,6 +470,77 @@ export default function SuperAdminDashboard({ user, onLogout }) {
                 </div>
               </form>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* SMS GATEWAY TAB */}
+      {activeTab === 'sms_gateway' && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="max-w-xl mx-auto space-y-6">
+            <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 rounded-2xl p-6 mb-8">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-indigo-500/20 rounded-xl">
+                  <Phone className="w-6 h-6 text-indigo-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Super Admin SMS Gateway</h3>
+                  <p className="text-sm text-slate-400 mt-1">Broadcast SMS to all users (Students & Faculty) of a specific college.</p>
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleSuperAdminSmsBroadcast} className="bg-slate-900 border border-slate-800 rounded-3xl p-8 space-y-6 shadow-xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-bl-full pointer-events-none -mr-4 -mt-4"></div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 font-mono">Target College</label>
+                  <div className="relative">
+                    <Building2 className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" />
+                    <select 
+                      required
+                      value={smsTargetCollege}
+                      onChange={(e) => setSmsTargetCollege(e.target.value)}
+                      className="w-full pl-11 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm text-white appearance-none"
+                    >
+                      <option value="">Select a college...</option>
+                      {colleges.map(c => (
+                        <option key={c._id} value={c.name}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-end mb-2">
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider font-mono">SMS Text Body</label>
+                    <span className={`text-[10px] font-mono font-bold ${smsBody.length > 160 ? 'text-rose-500' : 'text-slate-500'}`}>{smsBody.length} / 160</span>
+                  </div>
+                  <textarea 
+                    required
+                    rows={4}
+                    maxLength={160}
+                    value={smsBody}
+                    onChange={(e) => setSmsBody(e.target.value)}
+                    placeholder="Type your message here..."
+                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm text-white resize-none"
+                  />
+                </div>
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={smsLoading || !smsTargetCollege || !smsBody.trim()}
+                className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {smsLoading ? (
+                  <><RefreshCcw className="w-4 h-4 animate-spin" /> Sending...</>
+                ) : (
+                  <><Phone className="w-4 h-4" /> Send College Broadcast</>
+                )}
+              </button>
+            </form>
           </div>
         </div>
       )}

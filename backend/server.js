@@ -11,7 +11,9 @@ import adminRoutes from './routes/adminRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
 import facultyRoutes from './routes/facultyRoutes.js';
 import superAdminRoutes from './routes/superAdminRoutes.js';
+import announcementRoutes from './routes/announcementRoutes.js';
 import seedSuperAdmin from './seeder/superAdminSeeder.js';
+import path from 'path';
 
 // Load env vars
 dotenv.config();
@@ -25,16 +27,9 @@ connectDB().then(() => {
 const app = express();
 
 // Security HTTP headers
-app.use(helmet());
+app.use(helmet({ crossOriginResourcePolicy: false }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 mins
-  max: 100, // Limit each IP to 100 requests per windowMs
-});
-app.use('/api/', limiter);
-
-// CORS Config
+// CORS Config - Must be before rate limit so blocked requests still get CORS headers
 app.use(
   cors({
     origin: [
@@ -47,6 +42,13 @@ app.use(
     credentials: true,
   })
 );
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 mins
+  max: 1000, // Increased limit for development
+});
+app.use('/api/', limiter);
 
 // Body parser
 app.use(express.json({ limit: '10mb' }));
@@ -61,6 +63,11 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/faculty', facultyRoutes);
 app.use('/api/super-admin', superAdminRoutes);
+app.use('/api/announcements', announcementRoutes);
+
+// Serve static uploads
+const __dirname = path.resolve();
+app.use('/uploads', express.static(path.join(__dirname, 'backend', 'uploads')));
 
 // Base route
 app.get('/', (req, res) => {

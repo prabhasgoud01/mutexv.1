@@ -39,13 +39,6 @@ export default function StudentLogin() {
     setToast(prev => ({ ...prev, show: false }));
   };
 
-  const handleQuickFill = () => {
-    setEmail('alex@gmail.com');
-    setPassword('student_pass');
-    setEmailError('');
-    triggerToast('info', 'Quick-filled credentials for STUDENT');
-  };
-
   const validateEmailDomain = (value) => {
     if (!value) {
       setEmailError('');
@@ -54,10 +47,6 @@ export default function StudentLogin() {
     const formatRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!formatRe.test(value)) {
       setEmailError('Please enter a valid email format.');
-      return false;
-    }
-    if (!value.endsWith('@gmail.com')) {
-      setEmailError('Student emails must end with @gmail.com');
       return false;
     }
     setEmailError('');
@@ -167,12 +156,6 @@ export default function StudentLogin() {
               </p>
             </div>
 
-            <div className="p-3.5 rounded-2xl border border-slate-200/60 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30 flex items-start gap-3">
-              <Info className="w-4.5 h-4.5 text-slate-400 mt-0.5" />
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed font-semibold">
-                <span>STUDENT login verification requires standard accounts ending with <strong className={theme.textAccent}>@gmail.com</strong></span>
-              </div>
-            </div>
 
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
@@ -219,18 +202,6 @@ export default function StudentLogin() {
               </div>
             </form>
 
-            <div className="space-y-3 pt-4 border-t border-slate-200/50 dark:border-slate-800/60">
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
-                Quick-Testing Credentials Helper
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button onClick={handleQuickFill} className="px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-900/60 hover:bg-indigo-500/5 dark:hover:bg-indigo-950/20 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 cursor-pointer transition-colors">
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                  Student Quickfill
-                </button>
-              </div>
-            </div>
 
             <div className="text-center pt-2">
             </div>

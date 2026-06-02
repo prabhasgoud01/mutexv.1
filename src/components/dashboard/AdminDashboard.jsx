@@ -4,7 +4,7 @@ import {
   Server, LogOut, Bell, Calendar, FileText, Settings, X, ChevronDown, 
   ChevronRight, Activity, Cpu, Database, CheckCircle, Users, Send, Check, 
   Info, Menu, Home, GraduationCap, ShieldCheck, Building2, Book, 
-  ClipboardList, BarChart3, MessageSquare, AlertTriangle, UserCheck, PlusCircle, UploadCloud
+  ClipboardList, BarChart3, MessageSquare, AlertTriangle, UserCheck, PlusCircle, UploadCloud, Trash2
 } from 'lucide-react';
 import api from '../../services/api';
 
@@ -104,6 +104,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
   useEffect(() => {
     fetchStudents();
     fetchFaculty();
+    fetchSubjects();
   }, []);
   const [newStudName, setNewStudName] = useState('');
   const [newStudEmail, setNewStudEmail] = useState('');
@@ -299,28 +300,126 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
   };
 
   // 4. Subjects States
-  const [subjects, setSubjects] = useState([
-    { id: 401, name: 'Advanced Algorithms', code: 'CS-401', units: 5 },
-    { id: 402, name: 'Neural Networks & Deep Learning', code: 'CS-425', units: 4 },
-    { id: 403, name: 'Cloud Systems Architecture', code: 'CS-390', units: 6 }
-  ]);
+  const [subjects, setSubjects] = useState([]);
   const [newSubjName, setNewSubjName] = useState('');
   const [newSubjCode, setNewSubjCode] = useState('');
+  const [newSubjUnits, setNewSubjUnits] = useState(4);
+  const [newSubjRegulation, setNewSubjRegulation] = useState('R-16');
+  
+  const [subjectRegulationFilter, setSubjectRegulationFilter] = useState('All');
+  const [deleteSubjectModalOpen, setDeleteSubjectModalOpen] = useState(false);
+  const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
+  const [subjectToDelete, setSubjectToDelete] = useState(null);
+  const [selectedSubjects, setSelectedSubjects] = useState([]);
+  const subjectUploadRef = useRef(null);
 
-  const handleAddSubject = (e) => {
+  const fetchSubjects = async () => {
+    try {
+      const res = await api.get('/admin/subjects');
+      const mapped = res.data.map(s => ({
+        ...s,
+        id: s._id
+      }));
+      setSubjects(mapped);
+    } catch (error) {
+      console.error('Failed to fetch subjects', error);
+      triggerLocalToast('error', 'Failed to load subjects');
+    }
+  };
+
+  const handleAddSubject = async (e) => {
     e.preventDefault();
-    if (!newSubjName.trim() || !newSubjCode.trim()) return;
-    const newSubj = {
-      id: subjects.length + 401,
-      name: newSubjName,
-      code: newSubjCode,
-      units: 4
-    };
-    setSubjects([...subjects, newSubj]);
-    setNewSubjName('');
-    setNewSubjCode('');
-    setActiveSubTab('all-subjects');
-    triggerLocalToast('success', 'Subject added to registry.');
+    if (!newSubjName.trim() || !newSubjCode.trim() || !newSubjUnits || !newSubjRegulation) {
+      triggerLocalToast('error', 'Please complete all fields.');
+      return;
+    }
+    
+    try {
+      const res = await api.post('/admin/subjects', {
+        name: newSubjName,
+        code: newSubjCode,
+        units: newSubjUnits,
+        regulation: newSubjRegulation
+      });
+      
+      setSubjects([...subjects, { ...res.data, id: res.data._id }]);
+      setNewSubjName('');
+      setNewSubjCode('');
+      setNewSubjUnits(4);
+      setNewSubjRegulation('R-16');
+      setActiveSubTab('all-subjects');
+      triggerLocalToast('success', 'Subject added to registry.');
+    } catch (error) {
+      triggerLocalToast('error', error.response?.data?.message || 'Failed to add subject');
+    }
+  };
+
+  const handleSubjectBulkUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      triggerLocalToast('info', 'Uploading and processing subjects...');
+      const res = await api.post('/admin/upload-subjects', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      triggerLocalToast('success', res.data.message || 'Subjects uploaded successfully!');
+      fetchSubjects();
+    } catch (error) {
+      triggerLocalToast('error', error.response?.data?.message || 'Failed to upload subjects.');
+    } finally {
+      if (subjectUploadRef.current) subjectUploadRef.current.value = '';
+    }
+  };
+
+  const handleDeleteSubject = async () => {
+    if (!subjectToDelete) return;
+    try {
+      await api.delete(`/admin/subjects/${subjectToDelete.id}`);
+      setSubjects(subjects.filter(s => s.id !== subjectToDelete.id));
+      triggerLocalToast('success', 'Subject deleted.');
+    } catch (error) {
+      triggerLocalToast('error', 'Failed to delete subject');
+    } finally {
+      setDeleteSubjectModalOpen(false);
+      setSubjectToDelete(null);
+    }
+  };
+
+  const uniqueRegulations = Array.from(new Set(subjects.map(s => s.regulation).filter(Boolean)));
+
+  const filteredSubjects = subjects.filter(s => {
+    if (subjectRegulationFilter === 'All') return true;
+    return s.regulation === subjectRegulationFilter;
+  });
+
+  const toggleSubjectSelect = (id) => {
+    setSelectedSubjects(prev => 
+      prev.includes(id) ? prev.filter(sId => sId !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAllSubjects = () => {
+    if (selectedSubjects.length === filteredSubjects.length) {
+      setSelectedSubjects([]);
+    } else {
+      setSelectedSubjects(filteredSubjects.map(s => s.id));
+    }
+  };
+
+  const handleBulkDeleteSubjects = async () => {
+    try {
+      await api.post('/admin/subjects/bulk-delete', { ids: selectedSubjects });
+      setSubjects(subjects.filter(s => !selectedSubjects.includes(s.id)));
+      setSelectedSubjects([]);
+      triggerLocalToast('success', 'Selected subjects deleted.');
+    } catch (error) {
+      triggerLocalToast('error', 'Failed to bulk delete subjects');
+    } finally {
+      setBulkDeleteModalOpen(false);
+    }
   };
 
   // 5. Results States
@@ -376,19 +475,38 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
   };
 
   // 7. Core original States
-  const [announcements, setAnnouncements] = useState([
-    { id: 1, title: 'End-of-Term Examinations Schedule Released', category: 'Academic', date: 'May 30, 2026', body: 'All final exams will commence from June 15, 2026. Please check your course dashboards.', target: 'All' },
-    { id: 2, title: 'Main Server Scheduled Maintenance', category: 'Maintenance', date: 'May 28, 2026', body: 'The MuTeX database and system auth endpoints will undergo scheduled hardware maintenance this Saturday.', target: 'All' }
-  ]);
+  const [announcements, setAnnouncements] = useState([]);
   const [announceTitle, setAnnounceTitle] = useState('');
-  const [announceCategory, setAnnounceCategory] = useState('Academic');
+  const [announceCategory, setAnnounceCategory] = useState('');
   const [announceTarget, setAnnounceTarget] = useState('All');
   const [announceBody, setAnnounceBody] = useState('');
+  const [announceImage, setAnnounceImage] = useState(null);
   const [announceLoading, setAnnounceLoading] = useState(false);
 
-  const [smsTarget, setSmsTarget] = useState('All');
+  const fetchAnnouncements = async () => {
+    try {
+      const res = await api.get('/announcements');
+      setAnnouncements(res.data.data);
+    } catch (error) {
+      console.error('Failed to fetch announcements:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchAnnouncements();
+  }, []);
+
+  const [smsTarget, setSmsTarget] = useState('All Students');
   const [smsBody, setSmsBody] = useState('');
   const [smsLoading, setSmsLoading] = useState(false);
+  const [smsDepartment, setSmsDepartment] = useState('');
+  const [smsSection, setSmsSection] = useState('');
+  const [smsSearchQuery, setSmsSearchQuery] = useState('');
+  const [smsSearchResults, setSmsSearchResults] = useState([]);
+  const [smsSelectedUser, setSmsSelectedUser] = useState(null);
+  const [smsSingleUserType, setSmsSingleUserType] = useState('student');
+  const [isSearchingSmsUsers, setIsSearchingSmsUsers] = useState(false);
+  const [smsSearchTimer, setSmsSearchTimer] = useState(null);
 
   const [sessions, setSessions] = useState([
     { id: 1, name: 'Spring Semester 2026', range: 'Jan 05, 2026 - May 28, 2026', enrolled: 1204, status: 'Active' },
@@ -408,32 +526,120 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
 
   const handleCreateAnnouncement = async (e) => {
     e.preventDefault();
-    if (!announceTitle.trim() || !announceBody.trim()) return;
+    if (!announceTitle.trim() || !announceCategory.trim() || !announceBody.trim()) {
+      return triggerLocalToast('error', 'Please fill all required fields');
+    }
     setAnnounceLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setAnnouncements([{
-      id: announcements.length + 1,
-      title: announceTitle,
-      category: announceCategory,
-      date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
-      body: announceBody,
-      target: announceTarget
-    }, ...announcements]);
-    setAnnounceTitle('');
-    setAnnounceBody('');
-    setAnnounceLoading(false);
-    setActiveSubTab('all-announcements');
-    triggerLocalToast('success', 'Announcement published!');
+    
+    const formData = new FormData();
+    formData.append('title', announceTitle);
+    formData.append('category', announceCategory);
+    formData.append('content', announceBody);
+    if (announceImage) {
+      formData.append('image', announceImage);
+    }
+
+    try {
+      await api.post('/announcements', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      triggerLocalToast('success', 'Announcement published!');
+      setAnnounceTitle('');
+      setAnnounceCategory('');
+      setAnnounceBody('');
+      setAnnounceImage(null);
+      fetchAnnouncements();
+      setActiveSubTab('all-announcements');
+    } catch (error) {
+      console.error('Failed to create announcement:', error);
+      triggerLocalToast('error', 'Failed to publish announcement');
+    } finally {
+      setAnnounceLoading(false);
+    }
+  };
+
+  const handleDeleteAnnouncement = async (id) => {
+    try {
+      await api.delete(`/announcements/${id}`);
+      setAnnouncements(announcements.filter(a => a._id !== id));
+      triggerLocalToast('success', 'Announcement deleted successfully');
+    } catch (error) {
+      console.error('Error deleting announcement', error);
+      triggerLocalToast('error', 'Failed to delete announcement');
+    }
+  };
+
+  const handleSmsSearch = (query, targetType, userType) => {
+    setSmsSearchQuery(query);
+    if (smsSearchTimer) clearTimeout(smsSearchTimer);
+    
+    if (!query.trim()) {
+      setSmsSearchResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearchingSmsUsers(true);
+      try {
+        const endpoint = targetType === 'Specific Student' 
+          ? `/admin/students/search?query=${encodeURIComponent(query)}`
+          : `/admin/users/search?query=${encodeURIComponent(query)}`;
+        const res = await api.get(endpoint);
+        setSmsSearchResults(res.data.data || []);
+      } catch (error) {
+        console.error('Error searching users:', error);
+      } finally {
+        setIsSearchingSmsUsers(false);
+      }
+    }, 400); // 400ms debounce
+    setSmsSearchTimer(timer);
   };
 
   const handleBroadcastSMS = async (e) => {
     e.preventDefault();
-    if (!smsBody.trim()) return;
+    if (!smsBody.trim()) {
+      triggerLocalToast('error', 'Message body cannot be empty.');
+      return;
+    }
+    
+    if ((smsTarget === 'Specific Student' || smsTarget === 'Single User') && !smsSelectedUser) {
+      triggerLocalToast('error', 'Please select a user first.');
+      return;
+    }
+    if (smsTarget === 'Specific Department' && !smsDepartment) {
+      triggerLocalToast('error', 'Please select a department.');
+      return;
+    }
+    if (smsTarget === 'Specific Section' && (!smsDepartment || !smsSection)) {
+      triggerLocalToast('error', 'Please select a department and section.');
+      return;
+    }
+
     setSmsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1200));
-    setSmsLoading(false);
-    triggerLocalToast('success', `SMS broadcast sent successfully to ${smsTarget} list.`);
-    setSmsBody('');
+    try {
+      const payload = {
+        targetType: smsTarget,
+        message: smsBody,
+        department: smsDepartment,
+        section: smsSection,
+        userId: smsSelectedUser?._id,
+        userType: smsSingleUserType
+      };
+
+      const res = await api.post('/admin/send-sms', payload);
+      triggerLocalToast('success', res.data.message || 'SMS Broadcast completed successfully.');
+      
+      // Reset form
+      setSmsBody('');
+      setSmsSelectedUser(null);
+      setSmsSearchQuery('');
+      setSmsSearchResults([]);
+    } catch (error) {
+      console.error('Broadcast error:', error);
+      triggerLocalToast('error', error.response?.data?.message || 'Failed to send SMS.');
+    } finally {
+      setSmsLoading(false);
+    }
   };
 
   const handlePhotoUpload = (e) => {
@@ -814,6 +1020,22 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
           >
             <FileText className="w-4.5 h-4.5 opacity-80 text-slate-500" />
             <span>Logs</span>
+          </button>
+
+          {/* Settings */}
+          <button
+            onClick={() => {
+              setActiveSubTab('settings');
+              if (isMobile) setMobileMenuOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              isSelected('settings')
+                ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold'
+                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium'
+            }`}
+          >
+            <Settings className="w-4.5 h-4.5 opacity-80 text-slate-500" />
+            <span>Settings</span>
           </button>
         </div>
       </div>
@@ -1225,6 +1447,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                           <th className="px-6 py-4">Email</th>
                           <th className="px-6 py-4">Role</th>
                           <th className="px-6 py-4">Department</th>
+                          <th className="px-6 py-4">Phone Number</th>
                           <th className="px-6 py-4">Password Hash</th>
                           <th className="px-6 py-4">State</th>
                         </tr>
@@ -1237,6 +1460,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                             <td className="px-6 py-4 font-semibold text-slate-500">{s.email}</td>
                             <td className="px-6 py-4 font-semibold">{s.role || 'student'}</td>
                             <td className="px-6 py-4 font-semibold text-slate-500">{s.department || 'N/A'}</td>
+                            <td className="px-6 py-4 text-slate-500 font-semibold">{s.phoneNumber || 'N/A'}</td>
                             <td className="px-6 py-4 font-mono text-slate-400 text-[10px] truncate max-w-[150px]">{s.password || '******'}</td>
                             <td className="px-6 py-4">
                               <button 
@@ -1250,7 +1474,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                         ))}
                         {filteredStudents.length === 0 && (
                           <tr>
-                            <td colSpan={7} className="px-6 py-8 text-center text-slate-400 font-semibold">No students found matching your criteria.</td>
+                            <td colSpan={8} className="px-6 py-8 text-center text-slate-400 font-semibold">No students found matching your criteria.</td>
                           </tr>
                         )}
                       </tbody>
@@ -1616,27 +1840,88 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
               {/* VIEW 12: ALL SUBJECTS */}
               {activeSubTab === 'all-subjects' && (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-bold font-heading flex items-center gap-2">
-                    <Book className="w-5 h-5 text-rose-500" />
-                    Subject Syllabus Registry
-                  </h3>
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <h3 className="text-lg font-bold font-heading flex items-center gap-2">
+                      <Book className="w-5 h-5 text-rose-500" />
+                      Subject Syllabus Registry
+                    </h3>
+                    
+                    <div className="flex flex-wrap items-center gap-2">
+                      <AnimatePresence>
+                        {selectedSubjects.length > 0 && (
+                          <motion.button 
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            onClick={() => setBulkDeleteModalOpen(true)}
+                            className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-lg transition-all flex items-center gap-2 shadow-sm whitespace-nowrap"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Delete Selected ({selectedSubjects.length})
+                          </motion.button>
+                        )}
+                      </AnimatePresence>
+                      <span className="text-xs font-bold text-slate-500 uppercase font-mono ml-2">Regulation:</span>
+                      <select 
+                        value={subjectRegulationFilter}
+                        onChange={(e) => setSubjectRegulationFilter(e.target.value)}
+                        className="px-3 py-1.5 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-rose-500/30 appearance-none min-w-[100px]"
+                      >
+                        <option value="All">All Regulations</option>
+                        {uniqueRegulations.map((reg, idx) => (
+                          <option key={idx} value={reg}>{reg}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  
                   <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden">
                     <table className="w-full text-left border-collapse text-xs">
                       <thead className="bg-slate-50 dark:bg-slate-950 text-[10px] font-bold text-slate-400 uppercase">
                         <tr>
+                          <th className="px-4 py-4 w-10">
+                            <input 
+                              type="checkbox" 
+                              checked={filteredSubjects.length > 0 && selectedSubjects.length === filteredSubjects.length}
+                              onChange={toggleSelectAllSubjects}
+                              className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300"
+                            />
+                          </th>
                           <th className="px-6 py-4">Subject Name</th>
+                          <th className="px-6 py-4">Regulation</th>
                           <th className="px-6 py-4">Course Code</th>
                           <th className="px-6 py-4">Total Core Units</th>
+                          <th className="px-6 py-4 text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-                        {subjects.map(s => (
-                          <tr key={s.id}>
-                            <td className="px-6 py-4 font-bold">{s.name}</td>
-                            <td className="px-6 py-4 font-mono font-bold text-rose-500">{s.code}</td>
-                            <td className="px-6 py-4 font-bold">{s.units} Units</td>
+                        {filteredSubjects.length === 0 ? (
+                          <tr>
+                            <td colSpan="6" className="px-6 py-8 text-center text-slate-500 font-medium">No subjects found matching the criteria.</td>
                           </tr>
-                        ))}
+                        ) : (
+                          filteredSubjects.map(s => (
+                            <tr key={s.id} className={selectedSubjects.includes(s.id) ? "bg-rose-50/50 dark:bg-rose-900/10" : ""}>
+                              <td className="px-4 py-4 w-10">
+                                <input 
+                                  type="checkbox" 
+                                  checked={selectedSubjects.includes(s.id)}
+                                  onChange={() => toggleSubjectSelect(s.id)}
+                                  className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300"
+                                />
+                              </td>
+                              <td className="px-6 py-4 font-bold">{s.name}</td>
+                              <td className="px-6 py-4"><span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded font-mono font-bold text-slate-600 dark:text-slate-300 text-[10px]">{s.regulation}</span></td>
+                              <td className="px-6 py-4 font-mono font-bold text-rose-500">{s.code}</td>
+                              <td className="px-6 py-4 font-bold">{s.units} Units</td>
+                              <td className="px-6 py-4 text-right">
+                                <button onClick={() => { setSubjectToDelete(s); setDeleteSubjectModalOpen(true); }} className="p-2 bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors" title="Delete Subject">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -1659,8 +1944,51 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                       <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Course Code</label>
                       <input type="text" placeholder="e.g. CS-452" value={newSubjCode} onChange={(e) => setNewSubjCode(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950" />
                     </div>
-                    <button type="submit" className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95">Register Subject</button>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Regulation</label>
+                        <input 
+                          type="text" 
+                          list="regulation-options"
+                          placeholder="e.g. R-22" 
+                          value={newSubjRegulation} 
+                          onChange={(e) => setNewSubjRegulation(e.target.value)} 
+                          className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-bold bg-slate-50 dark:bg-slate-950" 
+                        />
+                        <datalist id="regulation-options">
+                          <option value="R-16" />
+                          <option value="R-19" />
+                          <option value="R-20" />
+                          <option value="R-22" />
+                        </datalist>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Core Units</label>
+                        <input type="number" min="1" max="10" placeholder="e.g. 4" value={newSubjUnits} onChange={(e) => setNewSubjUnits(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950" />
+                      </div>
+                    </div>
+                    <button type="submit" className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95 mt-2">Register Subject</button>
                   </form>
+
+                  <h3 className="text-lg font-bold font-heading flex items-center gap-2 pt-2">
+                    <UploadCloud className="w-5 h-5 text-rose-500" />
+                    Bulk Data Upload (CSV / Excel)
+                  </h3>
+                  <div className="p-6 md:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-sm space-y-6 text-center">
+                    <input type="file" ref={subjectUploadRef} className="hidden" accept=".csv, .xls, .xlsx" onChange={handleSubjectBulkUpload} />
+                    <div onClick={() => subjectUploadRef.current?.click()} className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-10 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer flex flex-col items-center justify-center gap-4">
+                      <div className="p-4 bg-rose-50 dark:bg-rose-900/30 rounded-full text-rose-500">
+                        <UploadCloud className="w-8 h-8" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-700 dark:text-slate-300">Click to upload or drag and drop</p>
+                        <p className="text-xs text-slate-500 mt-1">Accepts .csv, .xls, .xlsx files</p>
+                      </div>
+                    </div>
+                    <button onClick={() => subjectUploadRef.current?.click()} className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95">
+                      Process Upload
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -1903,12 +2231,28 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                   </div>
                   <div className="space-y-4">
                     {announcements.map((ann) => (
-                      <div key={ann.id} className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-sm space-y-3">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-950/40 text-rose-600">{ann.category}</span>
-                        <h4 className="font-heading font-bold text-md mt-1">{ann.title}</h4>
-                        <p className="text-xs text-slate-500 leading-relaxed font-medium">{ann.body}</p>
+                      <div key={ann._id} className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-sm relative group flex gap-5 items-start">
+                        <button onClick={() => handleDeleteAnnouncement(ann._id)} className="absolute top-4 right-4 p-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/20 text-rose-600 rounded-xl transition-colors opacity-0 group-hover:opacity-100 z-10">
+                          <X className="w-4 h-4" />
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3 mb-3">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-950/40 text-rose-600">{ann.category}</span>
+                            <span className="text-xs text-slate-400 font-semibold">{new Date(ann.createdAt).toLocaleDateString()}</span>
+                          </div>
+                          <h4 className="font-heading font-bold text-md mt-1">{ann.title}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed font-medium whitespace-pre-wrap truncate-2-lines line-clamp-3 mt-2">{ann.content}</p>
+                        </div>
+                        {ann.imageUrl && (
+                          <div className="shrink-0 w-24 h-24 sm:w-32 sm:h-32 rounded-xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800">
+                            <img src={api.defaults.baseURL.replace('/api', '') + ann.imageUrl} alt="Announcement" className="w-full h-full object-cover" />
+                          </div>
+                        )}
                       </div>
                     ))}
+                    {announcements.length === 0 && (
+                      <div className="p-8 text-center text-slate-400 font-semibold bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800/80">No announcements found.</div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1927,16 +2271,19 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                     </div>
                     <div>
                       <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Category</label>
-                      <select value={announceCategory} onChange={(e) => setAnnounceCategory(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-bold bg-slate-50 dark:bg-slate-950 font-sans">
-                        <option value="Academic">Academic</option>
-                        <option value="Maintenance">Maintenance</option>
-                      </select>
+                      <input type="text" placeholder="e.g. Academic, Event, Alert" value={announceCategory} onChange={(e) => setAnnounceCategory(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-bold bg-slate-50 dark:bg-slate-950 font-sans" />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Image (Optional)</label>
+                      <input type="file" accept="image/*" onChange={(e) => setAnnounceImage(e.target.files[0])} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950" />
                     </div>
                     <div>
                       <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Content Body</label>
                       <textarea rows={4} value={announceBody} onChange={(e) => setAnnounceBody(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950 font-sans" />
                     </div>
-                    <button type="submit" disabled={announceLoading} className="w-full py-3.5 bg-rose-600 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer">Publish</button>
+                    <button type="submit" disabled={announceLoading} className="w-full py-3.5 bg-rose-600 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer">
+                      {announceLoading ? 'Publishing...' : 'Publish'}
+                    </button>
                   </form>
                 </div>
               )}
@@ -1951,17 +2298,107 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                   <form onSubmit={handleBroadcastSMS} className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-sm space-y-4">
                     <div>
                       <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Target</label>
-                      <select value={smsTarget} onChange={(e) => setSmsTarget(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-bold bg-slate-50 dark:bg-slate-950 font-sans">
-                        <option value="All">All Registered Mobile numbers (96)</option>
-                        <option value="Faculty">Faculty Only (3)</option>
-                        <option value="Student">Students Only (93)</option>
+                      <select value={smsTarget} onChange={(e) => { setSmsTarget(e.target.value); setSmsSelectedUser(null); setSmsSearchQuery(''); }} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-bold bg-slate-50 dark:bg-slate-950 font-sans">
+                        <option value="All Students">All Students</option>
+                        <option value="All Faculty">All Faculty</option>
+                        <option value="All Registered Mobile Numbers">All Registered Mobile Numbers</option>
+                        <option value="Specific Department">Specific Department</option>
+                        <option value="Specific Section">Specific Section</option>
+                        <option value="Single User">Single User</option>
+                        <option value="Specific Student">Specific Student</option>
                       </select>
                     </div>
+
+                    {/* Conditional Fields based on Target */}
+                    {(smsTarget === 'Specific Department' || smsTarget === 'Specific Section') && (
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Department</label>
+                        <select value={smsDepartment} onChange={(e) => setSmsDepartment(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-bold bg-slate-50 dark:bg-slate-950 font-sans">
+                          <option value="">Select Department</option>
+                          <option value="Computer Science">Computer Science</option>
+                          <option value="Information Technology">Information Technology</option>
+                          <option value="Electronics & Communication">Electronics & Communication</option>
+                          <option value="Electrical Engineering">Electrical Engineering</option>
+                          <option value="Mechanical Engineering">Mechanical Engineering</option>
+                          <option value="Civil Engineering">Civil Engineering</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {smsTarget === 'Specific Section' && (
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Section</label>
+                        <select value={smsSection} onChange={(e) => setSmsSection(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-bold bg-slate-50 dark:bg-slate-950 font-sans">
+                          <option value="">Select Section</option>
+                          <option value="A">A</option>
+                          <option value="B">B</option>
+                          <option value="C">C</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {smsTarget === 'Single User' && (
+                      <div className="flex gap-4">
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300">
+                          <input type="radio" checked={smsSingleUserType === 'student'} onChange={() => setSmsSingleUserType('student')} className="text-rose-500 focus:ring-rose-500" />
+                          Student
+                        </label>
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300">
+                          <input type="radio" checked={smsSingleUserType === 'faculty'} onChange={() => setSmsSingleUserType('faculty')} className="text-rose-500 focus:ring-rose-500" />
+                          Faculty
+                        </label>
+                      </div>
+                    )}
+
+                    {(smsTarget === 'Specific Student' || smsTarget === 'Single User') && (
+                      <div className="relative">
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Search User (Name, Roll No, Email)</label>
+                        <input 
+                          type="text" 
+                          placeholder="Search..." 
+                          value={smsSearchQuery} 
+                          onChange={(e) => handleSmsSearch(e.target.value, smsTarget, smsSingleUserType)} 
+                          className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-bold bg-slate-50 dark:bg-slate-950 font-sans" 
+                        />
+                        {isSearchingSmsUsers && <div className="absolute right-4 top-10 text-xs text-slate-400">Loading...</div>}
+                        
+                        {smsSearchResults.length > 0 && !smsSelectedUser && (
+                          <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                            {smsSearchResults.map(user => (
+                              <div 
+                                key={user._id} 
+                                onClick={() => { setSmsSelectedUser(user); setSmsSearchResults([]); setSmsSearchQuery(user.name); }}
+                                className="px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-700 last:border-0"
+                              >
+                                <div className="font-bold text-xs">{user.name} <span className="text-[10px] font-mono text-slate-400 ml-2">{user.studentId || user.role}</span></div>
+                                <div className="text-[10px] text-slate-500">{user.department} • {user.phoneNumber || 'No phone'}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {smsSelectedUser && (
+                          <div className="mt-3 p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200/50 dark:border-emerald-800/30 rounded-xl flex justify-between items-center">
+                            <div>
+                              <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">{smsSelectedUser.name}</p>
+                              <p className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 font-mono">{smsSelectedUser.studentId || smsSelectedUser.role} • {smsSelectedUser.phoneNumber || 'No Phone Number!'}</p>
+                            </div>
+                            <button type="button" onClick={() => { setSmsSelectedUser(null); setSmsSearchQuery(''); }} className="text-emerald-600 hover:text-emerald-800"><X className="w-4 h-4" /></button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">SMS Text Body (max 160)</label>
+                      <div className="flex justify-between items-end mb-2">
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest font-mono">SMS Text Body</label>
+                        <span className={`text-[10px] font-mono font-bold ${smsBody.length > 160 ? 'text-rose-500' : 'text-slate-400'}`}>{smsBody.length} / 160</span>
+                      </div>
                       <textarea rows={3} value={smsBody} onChange={(e) => setSmsBody(e.target.value)} maxLength={160} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950 font-sans" />
                     </div>
-                    <button type="submit" disabled={smsLoading} className="w-full py-3.5 bg-rose-600 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95">Send GSM Broadcast</button>
+                    <button type="submit" disabled={smsLoading || smsBody.length === 0 || smsBody.length > 160} className="w-full py-3.5 bg-rose-600 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                      {smsLoading ? 'Sending...' : 'Send GSM Broadcast'}
+                    </button>
                   </form>
                 </div>
               )}
@@ -2105,7 +2542,141 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                 </div>
               )}
 
+              {/* VIEW 27: SETTINGS */}
+              {activeSubTab === 'settings' && (
+                <div className="space-y-6 max-w-4xl">
+                  <h3 className="text-lg font-bold font-heading flex items-center gap-2">
+                    <Settings className="w-5 h-5 text-rose-500" />
+                    System Configuration Settings
+                  </h3>
+                  <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-sm space-y-6">
+                    
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-2">Global System</h4>
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 bg-slate-100 border-slate-300" defaultChecked={false} />
+                        <div>
+                          <span className="block text-sm font-bold text-slate-700 dark:text-slate-300">Maintenance Mode</span>
+                          <span className="block text-xs text-slate-400 font-medium">Prevents non-admin users from logging in</span>
+                        </div>
+                      </label>
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 bg-slate-100 border-slate-300" defaultChecked={true} />
+                        <div>
+                          <span className="block text-sm font-bold text-slate-700 dark:text-slate-300">Allow New Registrations</span>
+                          <span className="block text-xs text-slate-400 font-medium">Enable or disable new user signups</span>
+                        </div>
+                      </label>
+                    </div>
+
+                    <div className="space-y-4 pt-4">
+                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-2">Notifications</h4>
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 bg-slate-100 border-slate-300" defaultChecked={true} />
+                        <div>
+                          <span className="block text-sm font-bold text-slate-700 dark:text-slate-300">Email Alerts</span>
+                          <span className="block text-xs text-slate-400 font-medium">Receive system alerts via email</span>
+                        </div>
+                      </label>
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 bg-slate-100 border-slate-300" defaultChecked={true} />
+                        <div>
+                          <span className="block text-sm font-bold text-slate-700 dark:text-slate-300">SMS Gateway Active</span>
+                          <span className="block text-xs text-slate-400 font-medium">Enable Fast2SMS integration for broadcasts</span>
+                        </div>
+                      </label>
+                    </div>
+
+                    <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                      <button 
+                        onClick={(e) => { e.preventDefault(); triggerLocalToast('success', 'Configuration saved successfully'); }}
+                        className="px-6 py-2.5 rounded-xl text-sm font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-md shadow-rose-600/20 transition-all active:scale-95">
+                        Save Configuration
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
             </motion.div>
+          </AnimatePresence>
+
+          {/* Delete Subject Modal */}
+          <AnimatePresence>
+            {deleteSubjectModalOpen && (
+              <motion.div 
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
+              >
+                <motion.div 
+                  initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                  className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200/60 dark:border-slate-800/80"
+                >
+                  <div className="flex flex-col items-center text-center space-y-4">
+                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center text-red-500 mb-2">
+                      <Trash2 className="w-8 h-8" />
+                    </div>
+                    <h2 className="text-xl font-bold font-heading">Delete Subject?</h2>
+                    <p className="text-xs text-slate-500 leading-relaxed font-semibold">
+                      You are about to delete <span className="font-bold text-rose-500">{subjectToDelete?.name}</span> ({subjectToDelete?.code}). This action cannot be undone. Are you completely sure?
+                    </p>
+                    <div className="flex w-full gap-3 pt-4">
+                      <button 
+                        onClick={() => { setDeleteSubjectModalOpen(false); setSubjectToDelete(null); }}
+                        className="flex-1 py-3 px-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        onClick={handleDeleteSubject}
+                        className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs shadow-md shadow-red-500/20 transition-all active:scale-95"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Bulk Delete Subject Modal */}
+          <AnimatePresence>
+            {bulkDeleteModalOpen && (
+              <motion.div 
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
+              >
+                <motion.div 
+                  initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                  className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200/60 dark:border-slate-800/80"
+                >
+                  <div className="flex flex-col items-center text-center space-y-4">
+                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center text-red-500 mb-2">
+                      <Trash2 className="w-8 h-8" />
+                    </div>
+                    <h2 className="text-xl font-bold font-heading">Delete {selectedSubjects.length} Subjects?</h2>
+                    <p className="text-xs text-slate-500 leading-relaxed font-semibold">
+                      You are about to delete <span className="font-bold text-rose-500">{selectedSubjects.length}</span> subjects. This action cannot be undone. Are you completely sure?
+                    </p>
+                    <div className="flex w-full gap-3 pt-4">
+                      <button 
+                        onClick={() => setBulkDeleteModalOpen(false)}
+                        className="flex-1 py-3 px-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        onClick={handleBulkDeleteSubjects}
+                        className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs shadow-md shadow-red-500/20 transition-all active:scale-95"
+                      >
+                        Delete All
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
           </AnimatePresence>
 
         </main>

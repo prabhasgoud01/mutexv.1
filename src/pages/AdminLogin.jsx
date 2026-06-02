@@ -39,13 +39,6 @@ export default function AdminLogin() {
     setToast(prev => ({ ...prev, show: false }));
   };
 
-  const handleQuickFill = () => {
-    setEmail('markus@admin.com');
-    setPassword('admin_pass');
-    setEmailError('');
-    triggerToast('info', 'Quick-filled credentials for ADMIN');
-  };
-
   const validateEmailDomain = (value) => {
     if (!value) {
       setEmailError('');
@@ -54,10 +47,6 @@ export default function AdminLogin() {
     const formatRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!formatRe.test(value)) {
       setEmailError('Please enter a valid email format.');
-      return false;
-    }
-    if (!value.endsWith('@admin.com')) {
-      setEmailError('Admin email must end with @admin.com');
       return false;
     }
     setEmailError('');
@@ -167,13 +156,6 @@ export default function AdminLogin() {
               </p>
             </div>
 
-            <div className="p-3.5 rounded-2xl border border-slate-200/60 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30 flex items-start gap-3">
-              <Info className="w-4.5 h-4.5 text-slate-400 mt-0.5" />
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed font-semibold">
-                <span>Admin login verification requires organization accounts ending with <strong className="text-rose-500">@admin.com</strong></span>
-              </div>
-            </div>
-
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
                 <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Organization Email</label>
@@ -219,18 +201,6 @@ export default function AdminLogin() {
               </div>
             </form>
 
-            <div className="space-y-3 pt-4 border-t border-slate-200/50 dark:border-slate-800/60">
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
-                Quick-Testing Credentials Helper
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button onClick={handleQuickFill} className="px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-900/60 hover:bg-rose-500/5 dark:hover:bg-rose-950/20 text-[10px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1 cursor-pointer transition-colors">
-                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                  Admin Quickfill
-                </button>
-              </div>
-            </div>
 
             <div className="text-center pt-2">
             </div>

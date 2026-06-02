@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import api from '../../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   BookMarked, Clock, LogOut, Users, Award, Calendar, UserCheck, ChevronRight,
@@ -168,7 +169,39 @@ const AttendanceMarkingTab = () => <div className="p-6 bg-white dark:bg-slate-90
 const SubjectsTab = () => <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm"><h3 className="text-lg font-bold font-heading">My Subjects</h3><p className="text-slate-500 mt-2">Feature coming soon.</p></div>;
 const FacultyAttendanceTab = () => <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm"><h3 className="text-lg font-bold font-heading">My Attendance</h3><p className="text-slate-500 mt-2">Feature coming soon.</p></div>;
 const TimetableTab = () => <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm"><h3 className="text-lg font-bold font-heading">Timetable</h3><p className="text-slate-500 mt-2">Feature coming soon.</p></div>;
-const AnnouncementsTab = () => <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm"><h3 className="text-lg font-bold font-heading">Announcements</h3><p className="text-slate-500 mt-2">Feature coming soon.</p></div>;
+const AnnouncementsTab = () => {
+  const [data, setData] = useState(null);
+  useEffect(() => { api.get('/announcements').then(res => setData(res.data.data)).catch(console.error); }, []);
+  if (!data) return <div className="p-8 text-center text-slate-500">Loading...</div>;
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-xl font-bold font-heading mb-6 flex items-center gap-2"><Bell className="w-6 h-6 text-indigo-500" /> College Announcements</h3>
+      {data.map((item) => (
+        <div key={item._id} className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-sm hover:border-indigo-500/30 transition-colors group flex gap-5 items-start">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 mb-3">
+              <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md bg-indigo-50 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400`}>
+                {item.category}
+              </span>
+              <span className="text-xs font-semibold text-slate-400">{new Date(item.createdAt).toLocaleDateString()}</span>
+            </div>
+            <h4 className="text-md font-bold text-slate-800 dark:text-slate-200">{item.title}</h4>
+            <p className="text-sm mt-2 text-slate-500 whitespace-pre-wrap leading-relaxed truncate-2-lines line-clamp-3">{item.content}</p>
+          </div>
+          {item.imageUrl && (
+            <div className="shrink-0 w-24 h-24 sm:w-32 sm:h-32 rounded-xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800">
+              <img src={api.defaults.baseURL.replace('/api', '') + item.imageUrl} alt="Announcement" className="w-full h-full object-cover" />
+            </div>
+          )}
+        </div>
+      ))}
+      {data.length === 0 && (
+        <div className="p-8 text-center text-slate-400 font-semibold bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800/80">No announcements yet.</div>
+      )}
+    </div>
+  );
+};
 const CalendarTab = () => <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm"><h3 className="text-lg font-bold font-heading">Calendar</h3><p className="text-slate-500 mt-2">Feature coming soon.</p></div>;
 const SalaryTab = () => <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm"><h3 className="text-lg font-bold font-heading">Salary Crediting</h3><p className="text-slate-500 mt-2">Feature coming soon.</p></div>;
 const PersonalTab = () => <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm"><h3 className="text-lg font-bold font-heading">Personal Details</h3><p className="text-slate-500 mt-2">Feature coming soon.</p></div>;

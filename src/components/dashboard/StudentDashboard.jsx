@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   GraduationCap, BookOpen, Clock, CheckSquare, LogOut, Award,
   LayoutDashboard, FileText, CreditCard, Bell, User, Calendar, Settings,
-  ChevronDown, Download, CalendarDays, MessageSquare
+  ChevronDown, Download, CalendarDays, MessageSquare, Activity, UploadCloud
 } from 'lucide-react';
 import api from '../../services/api';
 
@@ -404,54 +404,172 @@ const FeesTab = () => {
 
 const AnnouncementsTab = () => {
   const [data, setData] = useState(null);
-  useEffect(() => { api.get('/student/announcements').then(res => setData(res.data.data)).catch(console.error); }, []);
+  useEffect(() => { api.get('/announcements').then(res => setData(res.data.data)).catch(console.error); }, []);
   if (!data) return <div className="p-8 text-center text-slate-500">Loading...</div>;
 
   return (
     <div className="space-y-4">
       <h3 className="text-xl font-bold font-heading mb-6 flex items-center gap-2"><Bell className="w-6 h-6 text-indigo-500" /> College Announcements</h3>
       {data.map((item) => (
-        <div key={item.id} className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-sm hover:border-indigo-500/30 transition-colors cursor-pointer group">
-          <div className="flex justify-between items-start">
-            <div className="flex items-center gap-3">
-              <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md ${
-                item.type === 'Exam' ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400' :
-                item.type === 'Event' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400' :
-                'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-              }`}>
-                {item.type}
+        <div key={item._id} className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-sm hover:border-indigo-500/30 transition-colors group flex gap-5 items-start">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 mb-3">
+              <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md bg-indigo-50 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400`}>
+                {item.category}
               </span>
-              <span className="text-xs font-semibold text-slate-400">{item.date}</span>
+              <span className="text-xs font-semibold text-slate-400">{new Date(item.createdAt).toLocaleDateString()}</span>
             </div>
+            <h4 className="text-md font-bold text-slate-800 dark:text-slate-200">{item.title}</h4>
+            <p className="text-sm mt-2 text-slate-500 whitespace-pre-wrap leading-relaxed truncate-2-lines line-clamp-3">{item.content}</p>
           </div>
-          <h4 className="text-md font-bold mt-3 text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{item.title}</h4>
+          {item.imageUrl && (
+            <div className="shrink-0 w-24 h-24 sm:w-32 sm:h-32 rounded-xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800">
+              <img src={api.defaults.baseURL.replace('/api', '') + item.imageUrl} alt="Announcement" className="w-full h-full object-cover" />
+            </div>
+          )}
         </div>
       ))}
+      {data.length === 0 && (
+        <div className="p-8 text-center text-slate-400 font-semibold bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800/80">No announcements yet.</div>
+      )}
     </div>
   );
 };
 
-const SettingsTab = () => {
+const SettingsTab = ({ user }) => {
+  const [profileData, setProfileData] = React.useState({
+    name: user?.name || '',
+    email: user?.email || '',
+    phoneNumber: user?.phoneNumber || '',
+    bio: user?.bio || '',
+    profilePhoto: user?.profilePhoto || '',
+    location: user?.location || '',
+  });
+  const [statusMsg, setStatusMsg] = React.useState('');
+  const fileInputRef = React.useRef(null);
+
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        setStatusMsg('Image size must be less than 2MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileData(prev => ({ ...prev, profilePhoto: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      setStatusMsg('Saving...');
+      const payload = {
+        name: profileData.name,
+        location: profileData.location,
+        phoneNumber: profileData.phoneNumber,
+        bio: profileData.bio,
+        profilePhoto: profileData.profilePhoto
+      };
+      const { data } = await api.put('/auth/profile', payload);
+      setProfileData(prev => ({ ...prev, ...data }));
+      setStatusMsg('Profile updated successfully!');
+      setTimeout(() => setStatusMsg(''), 3000);
+    } catch (error) {
+      console.error('Error saving profile', error);
+      setStatusMsg(error.response?.data?.message || 'Failed to update profile.');
+    }
+  };
+
   return (
-    <div className="max-w-2xl space-y-6">
-      <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-sm space-y-6">
-        <h3 className="text-lg font-bold font-heading flex items-center gap-2"><Settings className="w-5 h-5 text-indigo-500" /> Account Settings</h3>
+    <div className="max-w-4xl space-y-6">
+      <div className="p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-sm space-y-6">
+        <div className="space-y-2">
+          <h2 className="text-2xl font-black font-heading text-slate-900 dark:text-white flex items-center gap-3">
+            <Settings className="w-6 h-6 text-indigo-500" /> Account Settings
+          </h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Manage your personal information and account settings.</p>
+        </div>
         
-        <div className="space-y-4">
-          <div className="space-y-1">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Update Password</label>
-            <input type="password" placeholder="New Password" className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 text-sm focus:outline-none focus:border-indigo-500" />
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-10 mt-8">
+          {/* Left: Avatar Column */}
+          <div className="flex flex-col items-center lg:items-start text-center lg:text-left space-y-4">
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 w-full">Profile Photo</h3>
+            <div className="relative group mx-auto lg:mx-0">
+              {profileData.profilePhoto ? (
+                <img src={profileData.profilePhoto} alt="Profile" className="w-40 h-40 rounded-full border-4 border-white dark:border-slate-900 shadow-lg object-cover" />
+              ) : (
+                <div className="w-40 h-40 rounded-full bg-slate-100 dark:bg-slate-800 border-4 border-white dark:border-slate-900 shadow-lg overflow-hidden flex items-center justify-center text-4xl font-bold text-slate-300">
+                  {profileData.name.charAt(0)}
+                </div>
+              )}
+              <button onClick={() => fileInputRef.current?.click()} className="absolute bottom-2 right-2 p-2 bg-white dark:bg-slate-800 rounded-full shadow-md border border-slate-100 dark:border-slate-700 hover:bg-slate-50 transition-colors cursor-pointer text-slate-600 dark:text-slate-300">
+                <Activity className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 w-full text-center lg:text-left">JPG, PNG or GIF. Max size 2MB.</p>
+            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handlePhotoUpload} />
+            <button onClick={() => fileInputRef.current?.click()} className="w-full py-2.5 px-4 rounded-xl border border-indigo-200 dark:border-indigo-900 text-indigo-600 dark:text-indigo-500 font-bold text-xs flex items-center justify-center gap-2 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
+              <UploadCloud className="w-4 h-4" />
+              Upload Photo
+            </button>
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Confirm Password</label>
-            <input type="password" placeholder="Confirm Password" className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 text-sm focus:outline-none focus:border-indigo-500" />
+
+          {/* Right: Info Column */}
+          <div className="space-y-6">
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Personal Information</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Full Name</label>
+                <input type="text" value={profileData.name} onChange={(e) => setProfileData({...profileData, name: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" />
+              </div>
+              
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Email Address</label>
+                <input type="email" disabled value={profileData.email} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 text-slate-500 text-sm focus:outline-none cursor-not-allowed" />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Phone Number</label>
+                <div className="flex">
+                  <div className="relative border border-r-0 border-slate-200 dark:border-slate-800 rounded-l-xl bg-slate-50 dark:bg-slate-900 px-3 py-2.5 flex items-center gap-1 shrink-0">
+                    <span className="text-lg">🇺🇸</span>
+                  </div>
+                  <input type="tel" value={profileData.phoneNumber} onChange={(e) => setProfileData({...profileData, phoneNumber: e.target.value})} className="w-full px-4 py-2.5 rounded-r-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Location</label>
+                <input type="text" value={profileData.location} onChange={(e) => setProfileData({...profileData, location: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" />
+              </div>
+
+              <div className="space-y-1.5 md:col-span-2">
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Bio (Optional)</label>
+                <textarea rows="3" value={profileData.bio} onChange={(e) => setProfileData({...profileData, bio: e.target.value})} placeholder="Tell us a little about yourself..." className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all resize-none"></textarea>
+                <div className="text-[10px] text-slate-400 text-right">{(profileData.bio || '').length} / 160</div>
+              </div>
+            </div>
+
+            <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+              <div>
+                {statusMsg && <p className="text-sm font-bold text-emerald-500">{statusMsg}</p>}
+              </div>
+              <button 
+                type="button"
+                onClick={handleSaveProfile}
+                className="px-6 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 transition-all"
+              >
+                Save Changes
+              </button>
+            </div>
           </div>
-          <button className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl transition-colors">
-            Update Password
-          </button>
         </div>
 
-        <hr className="border-slate-200 dark:border-slate-800" />
+        <hr className="border-slate-200 dark:border-slate-800 my-8" />
         
         <div className="space-y-4">
           <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Notification Preferences</h4>
@@ -665,7 +783,7 @@ export default function StudentDashboard({ user, onLogout, currentTime }) {
             {activeTab === 'personal' && <PersonalTab />}
             {activeTab === 'attendance' && <AttendanceTab />}
             {activeTab === 'feedback' && <FeedbackTab />}
-            {activeTab === 'settings' && <SettingsTab />}
+            {activeTab === 'settings' && <SettingsTab user={user} />}
           </div>
         </main>
       </div>

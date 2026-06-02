@@ -1,5 +1,6 @@
 import Student from '../models/Student.js';
 import Faculty from '../models/Faculty.js';
+import Subject from '../models/Subject.js';
 import bcrypt from 'bcryptjs';
 import { Readable } from 'stream';
 import csvParser from 'csv-parser';
@@ -73,7 +74,9 @@ export const uploadStudents = async (req, res) => {
         studentId: record.studentid || record.student_id || record.rollnumber || record.roll_number || '',
         department: record.department || record.branch || '',
         semester: record.semester || '',
+        phoneNumber: record.phonenumber || record.phone || record.contact || '',
         isFirstLogin: true,
+        collegeName: req.user ? req.user.collegeName : '',
       });
     }
 
@@ -171,6 +174,7 @@ export const uploadFaculty = async (req, res) => {
         specialization: record.specialization || '',
         positionRole: record.positionrole || record.position || 'Faculty',
         isFirstLogin: true,
+        collegeName: req.user ? req.user.collegeName : '',
       };
 
       console.log('Valid Faculty:', mappedFaculty);
@@ -226,5 +230,64 @@ export const uploadFaculty = async (req, res) => {
   } catch (error) {
     console.error('Faculty upload error:', error);
     res.status(500).json({ message: 'Server error during faculty upload' });
+  }
+};
+
+export const uploadSubjects = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    const records = await parseFileBuffer(req.file.buffer, req.file.originalname);
+    
+    const subjectsToInsert = [];
+    
+    for (const rawRecord of records) {
+      const record = {};
+      for (const key in rawRecord) {
+        if (Object.hasOwnProperty.call(rawRecord, key)) {
+          record[key.replace(/\s+/g, '').toLowerCase()] = rawRecord[key];
+        }
+      }
+
+      // required fields based on our model
+      if (!record.name && !record.subjectname) continue;
+      if (!record.code && !record.coursecode) continue;
+
+      subjectsToInsert.push({
+        name: record.name || record.subjectname,
+        code: record.code || record.coursecode,
+        units: Number(record.units || record.coreunits) || 0,
+        regulation: record.regulation || 'Unspecified',
+        collegeName: req.user.collegeName
+      });
+    }
+
+    if (subjectsToInsert.length === 0) {
+      return res.status(400).json({ message: 'No valid subjects found in file' });
+    }
+
+    // Process individually to handle duplicates gracefully
+    let insertedCount = 0;
+    for (const sub of subjectsToInsert) {
+      try {
+        await Subject.create(sub);
+        insertedCount++;
+      } catch (err) {
+        // Skip duplicates (E11000)
+        if (err.code !== 11000) {
+          console.error('Error inserting subject', err);
+        }
+      }
+    }
+
+    res.status(200).json({ 
+      message: 'Subjects uploaded successfully',
+      processedCount: insertedCount
+    });
+  } catch (error) {
+    console.error('Subject upload error:', error);
+    res.status(500).json({ message: 'Server error during subject upload' });
   }
 };

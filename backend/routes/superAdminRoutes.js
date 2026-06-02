@@ -9,6 +9,7 @@ import {
   getAllUsers,
   createAdmin,
 } from '../controllers/superAdminController.js';
+import { sendSmsBroadcast } from '../controllers/smsController.js';
 
 const router = express.Router();
 
@@ -22,5 +23,6 @@ router.put('/colleges/:id/block', toggleCollegeBlock);
 router.put('/colleges/:id/subscription', updateCollegeSubscription);
 router.get('/users', getAllUsers);
 router.post('/create-admin', createAdmin);
+router.post('/send-sms', sendSmsBroadcast);
 
 export default router;
