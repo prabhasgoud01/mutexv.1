@@ -3,6 +3,7 @@ import Faculty from '../models/Faculty.js';
 import Admin from '../models/Admin.js';
 import SmsLog from '../models/SmsLog.js';
 import axios from 'axios';
+import { sendSMS } from '../utils/smsService.js';
 
 // Search Students
 export const searchStudents = async (req, res) => {
@@ -142,74 +143,45 @@ export const sendSmsBroadcast = async (req, res) => {
       }
     }
 
-    let formattedNumbers = recipients
-      .map(r => r.phoneNumber)
-      .filter(Boolean)
-      .map(num => {
-        const digitsOnly = String(num).replace(/\D/g, '');
-        if (digitsOnly.length === 10) return `91${digitsOnly}`;
-        return digitsOnly;
-      })
-      .filter(num => num.length >= 10);
-
-    if (formattedNumbers.length === 0) {
-      return res.status(404).json({ success: false, message: 'No valid mobile numbers found for the selected target.' });
-    }
-
     let providerResponse = null;
     let deliveryStatus = 'Failed';
     let errorMessage = '';
 
     try {
-      if (!process.env.FAST2SMS_API_KEY) {
-        throw new Error('FAST2SMS_API_KEY is missing from environment variables');
-      }
-
-      console.log('Sending SMS...');
-      console.log('Phone Numbers:', formattedNumbers);
-      console.log('Message:', message);
-
-      const response = await axios.post(
-        'https://www.fast2sms.com/dev/bulkV2',
-        {
-          route: 'q',
-          message: message,
-          language: 'english',
-          numbers: formattedNumbers.join(','),
-        },
-        {
-          headers: {
-            authorization: process.env.FAST2SMS_API_KEY,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      console.log('Fast2SMS Response:', response.data);
-      providerResponse = response.data;
+      // Numbers formatting is now handled inside sendSMS, but we still pass an array of numbers
+      const rawNumbers = recipients.map(r => r.phoneNumber).filter(Boolean);
       
-      if (response.data.return === true) {
+      if (rawNumbers.length === 0) {
+        return res.status(404).json({ success: false, message: 'No valid mobile numbers found for the selected target.' });
+      }
+      
+      // Let sendSMS format and send
+      const responseData = await sendSMS(rawNumbers, message);
+      providerResponse = responseData;
+      
+      if (responseData.return === true) {
         deliveryStatus = 'Sent';
       } else {
-        errorMessage = response.data.message || 'SMS Provider rejected the request';
+        errorMessage = responseData.message || 'SMS Provider rejected the request';
       }
     } catch (apiError) {
-      console.error('Fast2SMS API Error:', apiError.response?.data || apiError.message);
       providerResponse = apiError.response?.data || { error: apiError.message };
       errorMessage = apiError.response?.data?.message || apiError.message;
     }
 
     // Log the broadcast
+    const actualRecipientsCount = recipients.filter(r => r.phoneNumber).length;
+    
     const smsLog = await SmsLog.create({
       targetType,
-      selectedUsers: formattedNumbers.length > 5 ? `${formattedNumbers.length} recipients` : formattedNumbers,
+      selectedUsers: actualRecipientsCount > 5 ? `${actualRecipientsCount} recipients` : recipients.map(r => r.phoneNumber).filter(Boolean),
       sentBy: req.user._id,
       senderModel: req.user.role === 'superadmin' ? 'SuperAdmin' : 'Admin',
       message,
       collegeName: req.user.role === 'superadmin' ? req.body.targetCollege : collegeName,
       deliveryStatus,
       providerResponse,
-      recipientsCount: formattedNumbers.length
+      recipientsCount: actualRecipientsCount
     });
 
     if (deliveryStatus === 'Failed') {
@@ -222,7 +194,7 @@ export const sendSmsBroadcast = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Successfully sent SMS to ${formattedNumbers.length} recipients`,
+      message: `Successfully sent SMS to ${actualRecipientsCount} recipients`,
       data: smsLog
     });
 

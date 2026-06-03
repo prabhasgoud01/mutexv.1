@@ -1,6 +1,7 @@
 import Student from '../models/Student.js';
 import Faculty from '../models/Faculty.js';
 import Subject from '../models/Subject.js';
+import Department from '../models/Department.js';
 import bcrypt from 'bcryptjs';
 import { Readable } from 'stream';
 import csvParser from 'csv-parser';
@@ -75,6 +76,22 @@ export const uploadStudents = async (req, res) => {
         department: record.department || record.branch || '',
         semester: record.semester || '',
         phoneNumber: record.phonenumber || record.phone || record.contact || '',
+        
+        gender: record.gender || '',
+        dateOfBirth: record.dateofbirth || record.dob || '',
+        mobileNumber: record.mobilenumber || record.mobile || record.phonenumber || record.phone || '',
+        fatherName: record.fathername || record.father_name || '',
+        motherName: record.mothername || record.mother_name || '',
+        parentMobileNumber: record.parentmobilenumber || record.parent_mobile || record.parentphone || '',
+        bloodGroup: record.bloodgroup || record.blood_group || '',
+        
+        rollNumber: record.rollnumber || record.roll_number || record.studentid || record.student_id || '',
+        batch: record.batch || record.year || '',
+        degree: record.degree || '',
+        programCode: record.programcode || record.program_code || '',
+        semesterNumber: record.semesternumber || record.semester || '',
+        section: record.section || '',
+        
         isFirstLogin: true,
         collegeName: req.user ? req.user.collegeName : '',
       });
@@ -289,5 +306,102 @@ export const uploadSubjects = async (req, res) => {
   } catch (error) {
     console.error('Subject upload error:', error);
     res.status(500).json({ message: 'Server error during subject upload' });
+  }
+};
+
+// @desc    Bulk Upload Departments via CSV/Excel
+// @route   POST /api/admin/upload-departments
+// @access  Private/Admin
+export const uploadDepartments = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'Please upload a CSV or Excel file' });
+    }
+
+    const results = [];
+    const fileBuffer = req.file.buffer;
+    const fileName = req.file.originalname.toLowerCase();
+
+    // Parse logic based on file type
+    if (fileName.endsWith('.csv')) {
+      const stream = Readable.from(fileBuffer.toString('utf-8'));
+      await new Promise((resolve, reject) => {
+        stream.pipe(csvParser())
+          .on('data', (data) => results.push(data))
+          .on('end', resolve)
+          .on('error', reject);
+      });
+    } else if (fileName.endsWith('.xls') || fileName.endsWith('.xlsx')) {
+      const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const data = xlsx.utils.sheet_to_json(sheet);
+      results.push(...data);
+    } else {
+      return res.status(400).json({ message: 'Unsupported file format. Use .csv, .xls, or .xlsx' });
+    }
+
+    let successCount = 0;
+    const errors = [];
+
+    for (const record of results) {
+      // Extract case-insensitive keys
+      const getField = (keys) => {
+        const key = Object.keys(record).find(k => keys.includes(k.toLowerCase().trim().replace(/_/g, '').replace(/\s/g, '')));
+        return key ? record[key] : '';
+      };
+
+      const name = getField(['name', 'departmentname', 'department']);
+      const headOfDepartment = getField(['headofdepartment', 'hodname', 'hod', 'head']);
+      const hodMobile = getField(['hodmobile', 'mobile', 'phone', 'contact']);
+      const hodEmail = getField(['hodemail', 'email']);
+      const details = getField(['details', 'description', 'desc']) || '';
+      
+      if (!name || !headOfDepartment || !hodMobile || !hodEmail) {
+        errors.push({ record: name || 'Unknown', reason: 'Missing mandatory fields (Name, HOD Name, HOD Mobile, HOD Email)' });
+        continue;
+      }
+
+      const collegeName = req.user.collegeName;
+
+      try {
+        const existingDept = await Department.findOne({ name, collegeName });
+        if (existingDept) {
+          errors.push({ record: name, reason: 'Department already exists' });
+          continue;
+        }
+
+        await Department.create({
+          name,
+          headOfDepartment,
+          hodMobile,
+          hodEmail,
+          details,
+          collegeName
+        });
+        successCount++;
+      } catch (err) {
+        errors.push({ record: name, reason: 'Database error: ' + err.message });
+      }
+    }
+
+    console.log(`Department Upload: processed ${results.length}, success ${successCount}, errors ${errors.length}`, errors);
+
+    if (successCount === 0 && errors.length > 0) {
+      return res.status(400).json({ 
+        message: 'Upload failed: No valid departments found in file.',
+        errors 
+      });
+    }
+
+    res.json({
+      message: `Processed ${results.length} records. Success: ${successCount}. Failed: ${errors.length}.`,
+      successCount,
+      errorCount: errors.length,
+      errors
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: 'Server error parsing bulk departments upload' });
   }
 };

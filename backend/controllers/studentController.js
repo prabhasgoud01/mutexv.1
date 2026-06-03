@@ -3,22 +3,31 @@
 // @access  Private/Student
 export const getStudentProfile = async (req, res) => {
   try {
+    const user = req.user;
     res.json({
       success: true,
       data: {
-        fullName: req.user.name || 'John Doe',
-        studentId: req.user.email.split('@')[0].toUpperCase() || 'STU2023001',
-        email: req.user.email,
-        phone: '+1 (555) 123-4567',
-        department: 'Computer Science',
-        course: 'B.Tech in Artificial Intelligence',
-        year: '3rd Year, Semester 6',
-        dob: '2002-05-14',
-        address: '123 Tech Valley Drive, Silicon City, SC 94000',
-        parents: {
-          fatherName: 'Robert Doe',
-          fatherPhone: '+1 (555) 987-6543'
-        }
+        // Personal Details
+        name: user.name,
+        email: user.email,
+        gender: user.gender || 'N/A',
+        dateOfBirth: user.dateOfBirth || 'N/A',
+        mobileNumber: user.mobileNumber || user.phoneNumber || 'N/A',
+        fatherName: user.fatherName || 'N/A',
+        motherName: user.motherName || 'N/A',
+        parentMobileNumber: user.parentMobileNumber || 'N/A',
+        bloodGroup: user.bloodGroup || 'N/A',
+        
+        // Academic Details
+        rollNumber: user.rollNumber || user.studentId || 'N/A',
+        batch: user.batch || 'N/A',
+        degree: user.degree || 'N/A',
+        department: user.department || 'N/A',
+        programCode: user.programCode || 'N/A',
+        semesterNumber: user.semesterNumber || user.semester || 'N/A',
+        section: user.section || 'N/A',
+        
+        collegeName: user.collegeName || 'N/A'
       }
     });
   } catch (error) {

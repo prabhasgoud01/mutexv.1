@@ -1,12 +1,88 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Server, LogOut, Bell, Calendar, FileText, Settings, X, ChevronDown, 
-  ChevronRight, Activity, Cpu, Database, CheckCircle, Users, Send, Check, 
-  Info, Menu, Home, GraduationCap, ShieldCheck, Building2, Book, 
-  ClipboardList, BarChart3, MessageSquare, AlertTriangle, UserCheck, PlusCircle, UploadCloud, Trash2
+import {
+  Server, LogOut, Bell, Calendar, FileText, Settings, X, ChevronDown,
+  ChevronRight, Activity, Cpu, Database, CheckCircle, Users, Send, Check,
+  Info, Menu, Home, GraduationCap, ShieldCheck, Building2, Book,
+  ClipboardList, BarChart3, MessageSquare, AlertTriangle, UserCheck, PlusCircle, UploadCloud, Trash2, Download
 } from 'lucide-react';
 import api from '../../services/api';
+
+const EditStudentModal = ({ student, onClose, onSave }) => {
+  const [formData, setFormData] = useState({
+    name: student?.name || '',
+    email: student?.email || '',
+    department: student?.department || '',
+    semester: student?.semester || '',
+    gender: student?.gender || '',
+    dateOfBirth: student?.dateOfBirth || '',
+    mobileNumber: student?.mobileNumber || student?.phoneNumber || '',
+    fatherName: student?.fatherName || '',
+    motherName: student?.motherName || '',
+    parentMobileNumber: student?.parentMobileNumber || '',
+    bloodGroup: student?.bloodGroup || '',
+    rollNumber: student?.rollNumber || student?.studentId || '',
+    batch: student?.batch || '',
+    degree: student?.degree || '',
+    programCode: student?.programCode || '',
+    semesterNumber: student?.semesterNumber || student?.semester || '',
+    section: student?.section || ''
+  });
+
+  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave({ id: student.id || student._id, ...formData });
+  };
+
+  if (!student) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-3xl shadow-xl overflow-hidden my-8">
+        <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+          <h2 className="text-xl font-bold font-heading">Edit Student Profile</h2>
+          <button onClick={onClose} className="p-2 bg-slate-200/50 dark:bg-slate-800 rounded-full hover:bg-rose-100 hover:text-rose-600 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+          <div>
+            <h3 className="text-md font-bold text-slate-800 dark:text-slate-200 mb-4 border-b pb-2">Personal Details</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div><label className="text-xs font-bold text-slate-500 mb-1 block">Full Name</label><input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg text-sm bg-slate-50 dark:bg-slate-900" /></div>
+              <div><label className="text-xs font-bold text-slate-500 mb-1 block">Email</label><input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg text-sm bg-slate-50 dark:bg-slate-900" /></div>
+              <div><label className="text-xs font-bold text-slate-500 mb-1 block">Gender</label><input type="text" name="gender" value={formData.gender} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg text-sm bg-slate-50 dark:bg-slate-900" /></div>
+              <div><label className="text-xs font-bold text-slate-500 mb-1 block">Date of Birth</label><input type="text" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg text-sm bg-slate-50 dark:bg-slate-900" /></div>
+              <div><label className="text-xs font-bold text-slate-500 mb-1 block">Mobile Number</label><input type="text" name="mobileNumber" value={formData.mobileNumber} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg text-sm bg-slate-50 dark:bg-slate-900" /></div>
+              <div><label className="text-xs font-bold text-slate-500 mb-1 block">Blood Group</label><input type="text" name="bloodGroup" value={formData.bloodGroup} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg text-sm bg-slate-50 dark:bg-slate-900" /></div>
+              <div><label className="text-xs font-bold text-slate-500 mb-1 block">Father's Name</label><input type="text" name="fatherName" value={formData.fatherName} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg text-sm bg-slate-50 dark:bg-slate-900" /></div>
+              <div><label className="text-xs font-bold text-slate-500 mb-1 block">Mother's Name</label><input type="text" name="motherName" value={formData.motherName} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg text-sm bg-slate-50 dark:bg-slate-900" /></div>
+              <div><label className="text-xs font-bold text-slate-500 mb-1 block">Parent Mobile</label><input type="text" name="parentMobileNumber" value={formData.parentMobileNumber} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg text-sm bg-slate-50 dark:bg-slate-900" /></div>
+            </div>
+          </div>
+          <div>
+            <h3 className="text-md font-bold text-slate-800 dark:text-slate-200 mb-4 border-b pb-2">Academic Details</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div><label className="text-xs font-bold text-slate-500 mb-1 block">Roll Number</label><input type="text" name="rollNumber" value={formData.rollNumber} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg text-sm bg-slate-50 dark:bg-slate-900" /></div>
+              <div><label className="text-xs font-bold text-slate-500 mb-1 block">Department</label><input type="text" name="department" value={formData.department} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg text-sm bg-slate-50 dark:bg-slate-900" /></div>
+              <div><label className="text-xs font-bold text-slate-500 mb-1 block">Degree</label><input type="text" name="degree" value={formData.degree} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg text-sm bg-slate-50 dark:bg-slate-900" /></div>
+              <div><label className="text-xs font-bold text-slate-500 mb-1 block">Program Code</label><input type="text" name="programCode" value={formData.programCode} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg text-sm bg-slate-50 dark:bg-slate-900" /></div>
+              <div><label className="text-xs font-bold text-slate-500 mb-1 block">Batch/Year</label><input type="text" name="batch" value={formData.batch} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg text-sm bg-slate-50 dark:bg-slate-900" /></div>
+              <div><label className="text-xs font-bold text-slate-500 mb-1 block">Semester Number</label><input type="text" name="semesterNumber" value={formData.semesterNumber} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg text-sm bg-slate-50 dark:bg-slate-900" /></div>
+              <div><label className="text-xs font-bold text-slate-500 mb-1 block">Section</label><input type="text" name="section" value={formData.section} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg text-sm bg-slate-50 dark:bg-slate-900" /></div>
+            </div>
+          </div>
+          <div className="pt-4 flex justify-end gap-3 border-t border-slate-200 dark:border-slate-800">
+            <button type="button" onClick={onClose} className="px-4 py-2 border rounded-lg text-sm font-bold">Cancel</button>
+            <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold shadow-md hover:bg-indigo-700">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
 
 export default function AdminDashboard({ user, onLogout, currentTime }) {
   // ------------------------------------------------------------------------
@@ -19,8 +95,16 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
     { id: 4, name: 'Sophia Martinez', email: 'sophia@gmail.com', role: 'Student', status: 'Suspended' }
   ]);
 
-  const [activeUsers, setActiveUsers] = useState(124);
-  const [latency, setLatency] = useState(24);
+  const [latency, setLatency] = useState(13);
+  const [dbStorage, setDbStorage] = useState(1.2);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLatency(prev => Math.max(8, prev + (Math.floor(Math.random() * 11) - 5)));
+      setDbStorage(prev => +(prev + (Math.random() * 0.05)).toFixed(2));
+    }, 2500);
+    return () => clearInterval(interval);
+  }, []);
   const [sysLog, setSysLog] = useState([
     'SYSTEM: Service edu-auth started successfully.',
     'DB: Connection pool opened with Postgres cluster.',
@@ -29,7 +113,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
   const [newLogInput, setNewLogInput] = useState('');
 
   // ------------------------------------------------------------------------
-  const [activeSubTab, setActiveSubTab] = useState('dashboard'); 
+  const [activeSubTab, setActiveSubTab] = useState('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [profileData, setProfileData] = useState({
@@ -73,17 +157,24 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
     }, 3500);
   };
 
-  // Auto fluctuating health metrics
-  useEffect(() => {
-    const statInterval = setInterval(() => {
-      setActiveUsers(prev => prev + Math.floor(Math.random() * 5) - 2);
-      setLatency(prev => Math.max(10, prev + Math.floor(Math.random() * 7) - 3));
-    }, 3000);
-    return () => clearInterval(statInterval);
-  }, []);
+
 
   // 1. Students States & Handlers
   const [studentsList, setStudentsList] = useState([]);
+  const [editStudentData, setEditStudentData] = useState(null);
+
+  const handleSaveStudentEdit = async (updatedData) => {
+    try {
+      const res = await api.put(`/admin/update-student/${updatedData.id}`, updatedData);
+      setStudentsList(studentsList.map(s => s.id === updatedData.id ? { ...s, ...res.data.student } : s));
+      setEditStudentData(null);
+      triggerLocalToast('success', 'Student updated successfully!');
+      fetchStudents();
+    } catch (error) {
+      console.error('Failed to update student:', error);
+      triggerLocalToast('error', error.response?.data?.message || 'Failed to update student');
+    }
+  };
 
   const fetchStudents = async () => {
     try {
@@ -119,9 +210,9 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
   const [studentSectionFilter, setStudentSectionFilter] = useState('All');
 
   const filteredStudents = studentsList.filter(s => {
-    const matchesSearch = s.name.toLowerCase().includes(studentSearchQuery.toLowerCase()) || 
-                          s.rollNumber.toLowerCase().includes(studentSearchQuery.toLowerCase()) ||
-                          s.email.toLowerCase().includes(studentSearchQuery.toLowerCase());
+    const matchesSearch = s.name.toLowerCase().includes(studentSearchQuery.toLowerCase()) ||
+      s.rollNumber.toLowerCase().includes(studentSearchQuery.toLowerCase()) ||
+      s.email.toLowerCase().includes(studentSearchQuery.toLowerCase());
     const matchesDept = studentDeptFilter === 'All' || s.department === studentDeptFilter;
     const matchesSection = studentSectionFilter === 'All' || s.section === studentSectionFilter;
     return matchesSearch && matchesDept && matchesSection;
@@ -171,7 +262,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
     if (!file) return;
     const formData = new FormData();
     formData.append('file', file);
-    
+
     try {
       triggerLocalToast('info', 'Uploading and processing students...');
       const res = await api.post('/admin/upload-students', formData, {
@@ -259,7 +350,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
     if (!file) return;
     const formData = new FormData();
     formData.append('file', file);
-    
+
     try {
       triggerLocalToast('info', 'Uploading and processing faculty...');
       const res = await api.post('/admin/upload-faculty', formData, {
@@ -275,28 +366,108 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
   };
 
   // 3. Departments States
-  const [departments, setDepartments] = useState([
-    { id: 301, name: 'Computer Science & Engineering', head: 'Dr. Sarah Jenkins', branchesCount: 4 },
-    { id: 302, name: 'Information Technology', head: 'Dr. Raymond Floyd', branchesCount: 2 },
-    { id: 303, name: 'Electrical Engineering', head: 'Prof. Helen Myers', branchesCount: 3 }
-  ]);
+  const [departments, setDepartments] = useState([]);
   const [newDeptName, setNewDeptName] = useState('');
   const [newDeptHead, setNewDeptHead] = useState('');
+  const [newDeptHodMobile, setNewDeptHodMobile] = useState('');
+  const [newDeptHodEmail, setNewDeptHodEmail] = useState('');
+  const [newDeptDetails, setNewDeptDetails] = useState('');
+  const [deleteDeptModalOpen, setDeleteDeptModalOpen] = useState(false);
+  const [deptToDelete, setDeptToDelete] = useState(null);
+  const [deptUploadReport, setDeptUploadReport] = useState(null);
+  const deptUploadRef = useRef(null);
 
-  const handleAddDept = (e) => {
+  const fetchDepartments = async () => {
+    try {
+      const res = await api.get('/admin/departments');
+      const mapped = res.data.map(d => ({
+        ...d,
+        id: d._id
+      }));
+      setDepartments(mapped);
+    } catch (error) {
+      console.error('Failed to fetch departments:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchDepartments();
+  }, []);
+
+  const handleAddDept = async (e) => {
     e.preventDefault();
-    if (!newDeptName.trim()) return;
-    const newDept = {
-      id: departments.length + 301,
-      name: newDeptName,
-      head: newDeptHead || 'TBD',
-      branchesCount: 1
-    };
-    setDepartments([...departments, newDept]);
-    setNewDeptName('');
-    setNewDeptHead('');
-    setActiveSubTab('all-departments');
-    triggerLocalToast('success', 'Department established.');
+    if (!newDeptName.trim() || !newDeptHead.trim() || !newDeptHodMobile.trim() || !newDeptHodEmail.trim()) {
+      triggerLocalToast('error', 'Complete all required fields.');
+      return;
+    }
+    
+    try {
+      await api.post('/admin/departments', {
+        name: newDeptName,
+        headOfDepartment: newDeptHead,
+        hodMobile: newDeptHodMobile,
+        hodEmail: newDeptHodEmail,
+        details: newDeptDetails
+      });
+      fetchDepartments();
+      setNewDeptName('');
+      setNewDeptHead('');
+      setNewDeptHodMobile('');
+      setNewDeptHodEmail('');
+      setNewDeptDetails('');
+      setActiveSubTab('all-departments');
+      triggerLocalToast('success', 'Department established.');
+    } catch (error) {
+      triggerLocalToast('error', error.response?.data?.message || 'Failed to establish department.');
+    }
+  };
+
+  const handleDeleteDept = async () => {
+    if (!deptToDelete) return;
+    try {
+      await api.delete(`/admin/departments/${deptToDelete.id}`);
+      setDepartments(departments.filter(d => d.id !== deptToDelete.id));
+      triggerLocalToast('success', 'Department deleted.');
+    } catch (error) {
+      triggerLocalToast('error', error.response?.data?.message || 'Failed to delete department.');
+    } finally {
+      setDeleteDeptModalOpen(false);
+      setDeptToDelete(null);
+    }
+  };
+
+  const handleDeptBulkUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    setDeptUploadReport(null);
+
+    try {
+      triggerLocalToast('info', 'Uploading and processing departments...');
+      const res = await api.post('/admin/upload-departments', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      triggerLocalToast('success', res.data.message || 'Departments uploaded successfully!');
+      
+      setDeptUploadReport({
+        successCount: res.data.successCount,
+        errorCount: res.data.errorCount,
+        errors: res.data.errors
+      });
+      fetchDepartments();
+    } catch (error) {
+      if (error.response?.data?.errors) {
+        setDeptUploadReport({
+          successCount: 0,
+          errorCount: error.response.data.errors.length,
+          errors: error.response.data.errors
+        });
+      }
+      triggerLocalToast('error', error.response?.data?.message || 'Failed to upload departments.');
+    } finally {
+      if (deptUploadRef.current) deptUploadRef.current.value = '';
+    }
   };
 
   // 4. Subjects States
@@ -305,7 +476,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
   const [newSubjCode, setNewSubjCode] = useState('');
   const [newSubjUnits, setNewSubjUnits] = useState(4);
   const [newSubjRegulation, setNewSubjRegulation] = useState('R-16');
-  
+
   const [subjectRegulationFilter, setSubjectRegulationFilter] = useState('All');
   const [deleteSubjectModalOpen, setDeleteSubjectModalOpen] = useState(false);
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
@@ -333,7 +504,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
       triggerLocalToast('error', 'Please complete all fields.');
       return;
     }
-    
+
     try {
       const res = await api.post('/admin/subjects', {
         name: newSubjName,
@@ -341,7 +512,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
         units: newSubjUnits,
         regulation: newSubjRegulation
       });
-      
+
       setSubjects([...subjects, { ...res.data, id: res.data._id }]);
       setNewSubjName('');
       setNewSubjCode('');
@@ -359,7 +530,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
     if (!file) return;
     const formData = new FormData();
     formData.append('file', file);
-    
+
     try {
       triggerLocalToast('info', 'Uploading and processing subjects...');
       const res = await api.post('/admin/upload-subjects', formData, {
@@ -396,7 +567,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
   });
 
   const toggleSubjectSelect = (id) => {
-    setSelectedSubjects(prev => 
+    setSelectedSubjects(prev =>
       prev.includes(id) ? prev.filter(sId => sId !== id) : [...prev, id]
     );
   };
@@ -423,21 +594,84 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
   };
 
   // 5. Results States
-  const [resultsList, setResultsList] = useState([
-    { id: 501, student: 'Alex Johnson', semester: 'Spring 2026', GPA: '3.92', status: 'Published' },
-    { id: 502, student: 'Sophia Martinez', semester: 'Spring 2026', GPA: '3.45', status: 'Draft' },
-    { id: 503, student: 'Liam Chen', semester: 'Spring 2026', GPA: '3.78', status: 'Published' }
-  ]);
+  const [resultsList, setResultsList] = useState([]);
+  const [resultsSearchQuery, setResultsSearchQuery] = useState('');
   const [resultsLoading, setResultsLoading] = useState(false);
+  const resultUploadRef = useRef(null);
+  const [uploadReport, setUploadReport] = useState(null);
+  const [isUploadingResults, setIsUploadingResults] = useState(false);
 
-  const handlePublishResults = async () => {
+  const fetchResultsList = async () => {
     setResultsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setResultsList(resultsList.map(r => ({ ...r, status: 'Published' })));
-    setResultsLoading(false);
-    setActiveSubTab('all-results');
-    triggerLocalToast('success', 'All grades and results published to Student dashboards.');
+    try {
+      const res = await api.get('/admin/results');
+      setResultsList(res.data.data);
+    } catch (error) {
+      console.error('Failed to fetch results', error);
+      triggerLocalToast('error', 'Failed to load results');
+    } finally {
+      setResultsLoading(false);
+    }
   };
+
+  const handleResultBulkUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    setIsUploadingResults(true);
+    setUploadReport(null);
+    try {
+      triggerLocalToast('info', 'Uploading and processing results...');
+      const res = await api.post('/admin/upload-results', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      triggerLocalToast('success', res.data.message || 'Results uploaded successfully!');
+      setUploadReport({
+        successCount: res.data.successCount,
+        errorCount: res.data.errorCount,
+        errors: res.data.errors
+      });
+      fetchResultsList();
+    } catch (error) {
+      triggerLocalToast('error', error.response?.data?.message || 'Failed to upload results.');
+    } finally {
+      setIsUploadingResults(false);
+      if (resultUploadRef.current) resultUploadRef.current.value = '';
+    }
+  };
+
+  const handleToggleResultBlock = async (ids, currentState) => {
+    try {
+      await Promise.all(ids.map(id => {
+        const endpoint = currentState === 'blocked' ? `/admin/unblock-result/${id}` : `/admin/block-result/${id}`;
+        return api.put(endpoint);
+      }));
+      const newState = currentState === 'blocked' ? 'visible' : 'blocked';
+      setResultsList(resultsList.map(r => ids.includes(r._id) ? { ...r, resultState: newState } : r));
+      triggerLocalToast('success', `Semester result ${newState} successfully`);
+    } catch (error) {
+      triggerLocalToast('error', 'Failed to change result state');
+    }
+  };
+
+  const handleDeleteResult = async (ids) => {
+    if (!window.confirm('Are you sure you want to delete this semester result?')) return;
+    try {
+      await Promise.all(ids.map(id => api.delete(`/admin/delete-result/${id}`)));
+      setResultsList(resultsList.filter(r => !ids.includes(r._id)));
+      triggerLocalToast('success', 'Semester result deleted successfully');
+    } catch (error) {
+      triggerLocalToast('error', 'Failed to delete results');
+    }
+  };
+
+  useEffect(() => {
+    if (activeSubTab === 'all-results') {
+      fetchResultsList();
+    }
+  }, [activeSubTab]);
 
   // 6. Interactive Chat Room simulator states
   const [chatMessages, setChatMessages] = useState([
@@ -530,7 +764,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
       return triggerLocalToast('error', 'Please fill all required fields');
     }
     setAnnounceLoading(true);
-    
+
     const formData = new FormData();
     formData.append('title', announceTitle);
     formData.append('category', announceCategory);
@@ -572,7 +806,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
   const handleSmsSearch = (query, targetType, userType) => {
     setSmsSearchQuery(query);
     if (smsSearchTimer) clearTimeout(smsSearchTimer);
-    
+
     if (!query.trim()) {
       setSmsSearchResults([]);
       return;
@@ -581,7 +815,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
     const timer = setTimeout(async () => {
       setIsSearchingSmsUsers(true);
       try {
-        const endpoint = targetType === 'Specific Student' 
+        const endpoint = targetType === 'Specific Student'
           ? `/admin/students/search?query=${encodeURIComponent(query)}`
           : `/admin/users/search?query=${encodeURIComponent(query)}`;
         const res = await api.get(endpoint);
@@ -601,7 +835,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
       triggerLocalToast('error', 'Message body cannot be empty.');
       return;
     }
-    
+
     if ((smsTarget === 'Specific Student' || smsTarget === 'Single User') && !smsSelectedUser) {
       triggerLocalToast('error', 'Please select a user first.');
       return;
@@ -628,7 +862,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
 
       const res = await api.post('/admin/send-sms', payload);
       triggerLocalToast('success', res.data.message || 'SMS Broadcast completed successfully.');
-      
+
       // Reset form
       setSmsBody('');
       setSmsSelectedUser(null);
@@ -683,11 +917,10 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
   // Reusable Sidebar Render Module
   const renderSidebarMenu = (isMobile = false) => {
     const isSelected = (tab) => activeSubTab === tab;
-    const itemClass = (tab) => `w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-      isSelected(tab) 
-        ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold shadow-sm' 
+    const itemClass = (tab) => `w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${isSelected(tab)
+        ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold shadow-sm'
         : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 font-medium'
-    }`;
+      }`;
     const headerClass = (key) => `w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-600 dark:text-slate-300 font-bold text-xs tracking-tight transition-all cursor-pointer`;
 
     return (
@@ -695,7 +928,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
         {/* Header User Profile Panel */}
         {!isMobile && (
           <div className="relative mb-6">
-            <button 
+            <button
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
               className="w-full rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 p-4 text-left shadow-lg relative overflow-hidden transition-all hover:shadow-xl hover:scale-[1.02]"
             >
@@ -768,11 +1001,10 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
               setActiveSubTab('dashboard');
               if (isMobile) setMobileMenuOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold transition-all ${
-              isSelected('dashboard')
+            className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold transition-all ${isSelected('dashboard')
                 ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
                 : 'bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
+              }`}
           >
             <Home className="w-4 h-4" />
             <span>Dashboard</span>
@@ -928,9 +1160,9 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                   <BarChart3 className="w-3.5 h-3.5 opacity-75" />
                   <span>All Results</span>
                 </button>
-                <button onClick={() => { setActiveSubTab('publish-results'); if (isMobile) setMobileMenuOpen(false); }} className={itemClass('publish-results')}>
-                  <BarChart3 className="w-3.5 h-3.5 opacity-75" />
-                  <span>Publish Results</span>
+                <button onClick={() => { setActiveSubTab('upload-results'); if (isMobile) setMobileMenuOpen(false); }} className={itemClass('upload-results')}>
+                  <UploadCloud className="w-3.5 h-3.5 opacity-75" />
+                  <span>Upload Results</span>
                 </button>
               </div>
             )}
@@ -942,11 +1174,10 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
               setActiveSubTab('chat');
               if (isMobile) setMobileMenuOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              isSelected('chat')
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${isSelected('chat')
                 ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold'
                 : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium'
-            }`}
+              }`}
           >
             <MessageSquare className="w-4.5 h-4.5 opacity-80 text-slate-500" />
             <span>Chat</span>
@@ -1012,11 +1243,10 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
               setActiveSubTab('logs');
               if (isMobile) setMobileMenuOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              isSelected('logs')
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${isSelected('logs')
                 ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold'
                 : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium'
-            }`}
+              }`}
           >
             <FileText className="w-4.5 h-4.5 opacity-80 text-slate-500" />
             <span>Logs</span>
@@ -1028,11 +1258,10 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
               setActiveSubTab('settings');
               if (isMobile) setMobileMenuOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              isSelected('settings')
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${isSelected('settings')
                 ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold'
                 : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium'
-            }`}
+              }`}
           >
             <Settings className="w-4.5 h-4.5 opacity-80 text-slate-500" />
             <span>Settings</span>
@@ -1044,11 +1273,11 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
 
   return (
     <div className="h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-300 flex flex-col">
-      
+
       {/* Top Navbar */}
       <nav className="shrink-0 z-30 w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button 
+          <button
             onClick={() => setMobileMenuOpen(true)}
             className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 md:hidden text-slate-600 dark:text-slate-300 transition-all cursor-pointer"
           >
@@ -1082,7 +1311,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
 
       {/* Main Scaffold Layout */}
       <div className="flex flex-1 w-full min-h-0">
-        
+
         {/* Left Desktop Sidebar */}
         <aside className="w-64 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 backdrop-blur-sm p-6 hidden md:flex flex-col overflow-y-auto">
           {renderSidebarMenu(false)}
@@ -1127,7 +1356,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
 
         {/* Dynamic Content Workspace */}
         <main className="flex-1 p-6 md:p-8 space-y-8 overflow-y-auto">
-          
+
           {/* Animated Local Notification Banner (Fixed position so it's always visible) */}
           <AnimatePresence>
             {bannerToast.show && (
@@ -1135,13 +1364,12 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                 initial={{ opacity: 0, y: -50 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -50 }}
-                className={`fixed top-6 right-1/2 translate-x-1/2 z-50 w-full max-w-xl mx-auto p-4 rounded-2xl border text-xs font-semibold flex items-center gap-3 shadow-2xl ${
-                  bannerToast.type === 'success' 
-                    ? 'bg-emerald-50/90 dark:bg-emerald-900/40 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 backdrop-blur-md' 
+                className={`fixed top-6 right-1/2 translate-x-1/2 z-50 w-full max-w-xl mx-auto p-4 rounded-2xl border text-xs font-semibold flex items-center gap-3 shadow-2xl ${bannerToast.type === 'success'
+                    ? 'bg-emerald-50/90 dark:bg-emerald-900/40 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 backdrop-blur-md'
                     : bannerToast.type === 'error'
-                    ? 'bg-rose-50/90 dark:bg-rose-900/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 backdrop-blur-md'
-                    : 'bg-indigo-50/90 dark:bg-indigo-900/40 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 backdrop-blur-md'
-                }`}
+                      ? 'bg-rose-50/90 dark:bg-rose-900/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 backdrop-blur-md'
+                      : 'bg-indigo-50/90 dark:bg-indigo-900/40 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 backdrop-blur-md'
+                  }`}
               >
                 <div className="p-1 rounded-full bg-white dark:bg-slate-900">
                   {bannerToast.type === 'success' ? <CheckCircle className="w-4.5 h-4.5 text-emerald-500" /> : <Info className="w-4.5 h-4.5 text-rose-500" />}
@@ -1160,7 +1388,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
               transition={{ duration: 0.25 }}
               className="space-y-8"
             >
-              
+
               {/* VIEW 0: PROFILE MANAGEMENT */}
               {activeSubTab === 'profile' && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -1168,7 +1396,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                     <h2 className="text-2xl font-black font-heading text-slate-900 dark:text-white">Profile</h2>
                     <p className="text-sm text-slate-500 dark:text-slate-400">Manage your personal information and account settings.</p>
                   </div>
-                  
+
                   {/* Tabs */}
                   <div className="flex items-center gap-6 border-b border-slate-200 dark:border-slate-800 text-sm font-bold">
                     <button className="pb-3 border-b-2 border-blue-600 text-blue-600 dark:text-blue-500">Personal Information</button>
@@ -1179,7 +1407,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                   {/* Profile Layout */}
                   <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 shadow-sm">
                     <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-10">
-                      
+
                       {/* Left: Avatar Column */}
                       <div className="flex flex-col items-center lg:items-start text-center lg:text-left space-y-4">
                         <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 w-full">Profile Photo</h3>
@@ -1206,16 +1434,16 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                       {/* Right: Info Column */}
                       <div className="space-y-6">
                         <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Personal Information</h3>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div className="space-y-1.5">
                             <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Full Name</label>
-                            <input type="text" value={profileData.name} onChange={(e) => setProfileData({...profileData, name: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
+                            <input type="text" value={profileData.name} onChange={(e) => setProfileData({ ...profileData, name: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
                           </div>
                           <div className="space-y-1.5">
                             <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Role</label>
                             <div className="relative">
-                              <select value={profileData.role} onChange={(e) => setProfileData({...profileData, role: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all appearance-none cursor-pointer">
+                              <select value={profileData.role} onChange={(e) => setProfileData({ ...profileData, role: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all appearance-none cursor-pointer">
                                 <option value="Project Manager">Project Manager</option>
                                 <option value="Admin">Admin</option>
                                 <option value="Faculty">Faculty</option>
@@ -1224,15 +1452,15 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                               <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                             </div>
                           </div>
-                          
+
                           <div className="space-y-1.5">
                             <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Email Address</label>
-                            <input type="email" value={profileData.email} onChange={(e) => setProfileData({...profileData, email: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
+                            <input type="email" value={profileData.email} onChange={(e) => setProfileData({ ...profileData, email: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
                           </div>
                           <div className="space-y-1.5">
                             <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">College Name</label>
                             <div className="relative">
-                              <select value={profileData.collegeName} onChange={(e) => setProfileData({...profileData, collegeName: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all appearance-none cursor-pointer">
+                              <select value={profileData.collegeName} onChange={(e) => setProfileData({ ...profileData, collegeName: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all appearance-none cursor-pointer">
                                 <option value="Product Management">Product Management</option>
                                 <option value="Mutex College">Mutex College</option>
                                 <option value="Engineering Department">Engineering Department</option>
@@ -1248,29 +1476,29 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                                 <span className="text-lg">🇺🇸</span>
                                 <ChevronDown className="w-3 h-3 text-slate-400" />
                               </div>
-                              <input type="tel" value={profileData.mobileNumber} onChange={(e) => setProfileData({...profileData, mobileNumber: e.target.value})} className="w-full px-4 py-2.5 rounded-r-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
+                              <input type="tel" value={profileData.mobileNumber} onChange={(e) => setProfileData({ ...profileData, mobileNumber: e.target.value })} className="w-full px-4 py-2.5 rounded-r-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
                             </div>
                           </div>
                           <div className="space-y-1.5">
                             <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Location</label>
-                            <input type="text" value={profileData.location} onChange={(e) => setProfileData({...profileData, location: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
+                            <input type="text" value={profileData.location} onChange={(e) => setProfileData({ ...profileData, location: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
                           </div>
 
                           <div className="space-y-1.5 md:col-span-1">
                             <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Bio (Optional)</label>
-                            <textarea rows="3" value={profileData.bio} onChange={(e) => setProfileData({...profileData, bio: e.target.value})} placeholder="Passionate about building products and leading high-performing teams." className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all resize-none"></textarea>
+                            <textarea rows="3" value={profileData.bio} onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })} placeholder="Passionate about building products and leading high-performing teams." className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all resize-none"></textarea>
                             <div className="text-[10px] text-slate-400 text-right">{(profileData.bio || '').length} / 160</div>
                           </div>
-                          
+
                           <div className="space-y-6 md:col-span-1">
                             <div className="space-y-1.5">
                               <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Employee ID</label>
-                              <input type="text" value={profileData.employeeId} onChange={(e) => setProfileData({...profileData, employeeId: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
+                              <input type="text" value={profileData.employeeId} onChange={(e) => setProfileData({ ...profileData, employeeId: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
                             </div>
                             <div className="space-y-1.5">
                               <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Date of Birth</label>
                               <div className="relative">
-                                <input type="text" value={profileData.dateOfBirth} onChange={(e) => setProfileData({...profileData, dateOfBirth: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
+                                <input type="text" value={profileData.dateOfBirth} onChange={(e) => setProfileData({ ...profileData, dateOfBirth: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
                                 <Calendar className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                               </div>
                             </div>
@@ -1283,7 +1511,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                       <button className="px-6 py-2.5 rounded-xl text-sm font-bold border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                         Cancel
                       </button>
-                      <button 
+                      <button
                         type="button"
                         onClick={handleSaveProfile}
                         className="px-6 py-2.5 rounded-xl text-sm font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 transition-all"
@@ -1303,7 +1531,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                     <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-sm flex items-center justify-between">
                       <div className="space-y-1">
                         <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Active Users</span>
-                        <p className="text-2xl font-heading font-black text-slate-800 dark:text-slate-100">{activeUsers}</p>
+                        <p className="text-2xl font-heading font-black text-slate-800 dark:text-slate-100">{studentsList.length + facultyList.length}</p>
                       </div>
                       <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl">
                         <Activity className="w-5 h-5" />
@@ -1322,8 +1550,8 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
 
                     <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-sm flex items-center justify-between">
                       <div className="space-y-1">
-                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Database Clusters</span>
-                        <p className="text-2xl font-heading font-black text-slate-800 dark:text-slate-100">Healthy</p>
+                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Database Storage</span>
+                        <p className="text-2xl font-heading font-black text-slate-800 dark:text-slate-100">{dbStorage} GB</p>
                       </div>
                       <div className="p-3 bg-indigo-500/10 text-indigo-500 rounded-xl">
                         <Database className="w-5 h-5" />
@@ -1367,7 +1595,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                               const activeStudents = studentsList.filter(s => !s.blocked).map(s => ({ id: s.id, name: s.name, email: s.email, role: 'Student', status: 'Active', original: s }));
                               const activeFaculty = facultyList.filter(f => !f.blocked).map(f => ({ id: f.id, name: f.name, email: f.email, role: f.position || 'Faculty', status: 'Active', original: f }));
                               const activeSystemUsers = [...activeStudents, ...activeFaculty];
-                              
+
                               if (activeSystemUsers.length === 0) {
                                 return (
                                   <tr>
@@ -1384,11 +1612,10 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                                   </td>
                                   <td className="px-6 py-4 font-semibold">{u.role}</td>
                                   <td className="px-6 py-4">
-                                    <span className={`inline-block px-2.5 py-0.5 rounded-full font-bold text-[9px] ${
-                                      u.status === 'Active'
+                                    <span className={`inline-block px-2.5 py-0.5 rounded-full font-bold text-[9px] ${u.status === 'Active'
                                         ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400'
                                         : 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400'
-                                    }`}>
+                                      }`}>
                                       {u.status}
                                     </span>
                                   </td>
@@ -1463,12 +1690,20 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                             <td className="px-6 py-4 text-slate-500 font-semibold">{s.phoneNumber || 'N/A'}</td>
                             <td className="px-6 py-4 font-mono text-slate-400 text-[10px] truncate max-w-[150px]">{s.password || '******'}</td>
                             <td className="px-6 py-4">
-                              <button 
-                                onClick={() => toggleBlockStudent(s.id)}
-                                className={`px-4 py-1.5 rounded-full font-bold text-xs transition-colors cursor-pointer ${s.blocked ? 'bg-rose-500/10 text-rose-500 hover:bg-rose-500/20' : 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20'}`}
-                              >
-                                {s.blocked ? 'Blocked' : 'Active'}
-                              </button>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => setEditStudentData(s)}
+                                  className="px-3 py-1.5 rounded-full font-bold text-xs bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 transition-colors"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => toggleBlockStudent(s.id)}
+                                  className={`px-4 py-1.5 rounded-full font-bold text-xs transition-colors cursor-pointer ${s.blocked ? 'bg-rose-500/10 text-rose-500 hover:bg-rose-500/20' : 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20'}`}
+                                >
+                                  {s.blocked ? 'Blocked' : 'Active'}
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -1627,8 +1862,8 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
                         {facultyList.filter(f => {
-                          const matchesSearch = f.name.toLowerCase().includes(facultySearchQuery.toLowerCase()) || 
-                                                f.email.toLowerCase().includes(facultySearchQuery.toLowerCase());
+                          const matchesSearch = f.name.toLowerCase().includes(facultySearchQuery.toLowerCase()) ||
+                            f.email.toLowerCase().includes(facultySearchQuery.toLowerCase());
                           const matchesDept = facultyDeptFilter === 'All' || f.department === facultyDeptFilter;
                           const matchesState = facultyStateFilter === 'All' || (facultyStateFilter === 'Blocked' ? f.blocked : !f.blocked);
                           return matchesSearch && matchesDept && matchesState;
@@ -1645,7 +1880,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                               </span>
                             </td>
                             <td className="px-6 py-4">
-                              <button 
+                              <button
                                 onClick={() => toggleBlockFaculty(f.id)}
                                 className={`px-4 py-1.5 rounded-full font-bold text-xs transition-colors cursor-pointer ${f.blocked ? 'bg-rose-500/10 text-rose-500 hover:bg-rose-500/20' : 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20'}`}
                               >
@@ -1781,38 +2016,123 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                     <Building2 className="w-5 h-5 text-rose-500" />
                     University Department Registries
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {departments.map(d => (
-                      <div key={d.id} className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-sm space-y-4">
-                        <div className="flex justify-between items-start">
-                          <h4 className="font-heading font-bold text-sm pr-4 leading-snug">{d.name}</h4>
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">{d.branchesCount} Branches</span>
+                      <div key={d.id} className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-sm flex flex-col justify-between">
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-start">
+                            <h4 className="font-heading font-bold text-sm pr-4 leading-snug text-indigo-600 dark:text-indigo-400">{d.name}</h4>
+                            <button onClick={() => { setDeptToDelete(d); setDeleteDeptModalOpen(true); }} className="p-1.5 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 rounded-md transition-colors" title="Delete Department">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-xs">
+                            <div>
+                              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Head of Department</span>
+                              <strong className="text-slate-700 dark:text-slate-300 font-bold">{d.headOfDepartment || d.head}</strong>
+                            </div>
+                            <div>
+                              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">HOD Email</span>
+                              <span className="text-slate-600 dark:text-slate-400 font-medium truncate block" title={d.hodEmail}>{d.hodEmail || 'N/A'}</span>
+                            </div>
+                            <div>
+                              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">HOD Mobile</span>
+                              <span className="text-slate-600 dark:text-slate-400 font-medium">{d.hodMobile || 'N/A'}</span>
+                            </div>
+                            <div>
+                              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Department Details</span>
+                              <span className="text-slate-500 italic line-clamp-1" title={d.details}>{d.details || 'No details available'}</span>
+                            </div>
+                          </div>
                         </div>
-                        <p className="text-xs text-slate-400 font-medium">Head of Department: <strong className="text-slate-600 dark:text-slate-300 font-bold">{d.head}</strong></p>
                       </div>
                     ))}
+                    {departments.length === 0 && (
+                      <div className="col-span-full p-8 text-center text-slate-500 font-semibold border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                        No departments established yet.
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
 
               {/* VIEW 10: ADD DEPARTMENT */}
               {activeSubTab === 'add-department' && (
-                <div className="max-w-md mx-auto space-y-6">
+                <div className="max-w-2xl mx-auto space-y-6">
                   <h3 className="text-lg font-bold font-heading flex items-center gap-2">
                     <PlusCircle className="w-5 h-5 text-rose-500" />
                     Establish Department
                   </h3>
                   <form onSubmit={handleAddDept} className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-sm space-y-4">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Department Name</label>
-                      <input type="text" placeholder="e.g. Mechanical Engineering" value={newDeptName} onChange={(e) => setNewDeptName(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Department Name *</label>
+                        <input type="text" placeholder="e.g. Mechanical Engineering" value={newDeptName} onChange={(e) => setNewDeptName(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950" required />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Appointed Head (HOD) *</label>
+                        <input type="text" placeholder="e.g. Dr. Alan Turing" value={newDeptHead} onChange={(e) => setNewDeptHead(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950" required />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">HOD Mobile *</label>
+                        <input type="text" placeholder="e.g. +1 555-1234" value={newDeptHodMobile} onChange={(e) => setNewDeptHodMobile(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950" required />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">HOD Email *</label>
+                        <input type="email" placeholder="e.g. hod.me@college.edu" value={newDeptHodEmail} onChange={(e) => setNewDeptHodEmail(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950" required />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Department Details (Optional)</label>
+                        <input type="text" placeholder="e.g. Established in 1995" value={newDeptDetails} onChange={(e) => setNewDeptDetails(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950" />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Appointed Head (HOD)</label>
-                      <input type="text" placeholder="e.g. Dr. Alan Turing" value={newDeptHead} onChange={(e) => setNewDeptHead(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950" />
-                    </div>
-                    <button type="submit" className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95">Establish Department</button>
+                    <button type="submit" className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95 mt-4">Establish Department</button>
                   </form>
+                  
+                  <h3 className="text-lg font-bold font-heading flex items-center gap-2 pt-4">
+                    <UploadCloud className="w-5 h-5 text-rose-500" />
+                    Bulk Data Upload (CSV / Excel)
+                  </h3>
+                  <div className="p-6 md:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-sm space-y-6 text-center">
+                    <input type="file" ref={deptUploadRef} className="hidden" accept=".csv, .xls, .xlsx" onChange={handleDeptBulkUpload} />
+                    <div onClick={() => deptUploadRef.current?.click()} className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-10 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer flex flex-col items-center justify-center gap-4">
+                      <div className="p-4 bg-rose-50 dark:bg-rose-900/30 rounded-full text-rose-500">
+                        <UploadCloud className="w-8 h-8" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-700 dark:text-slate-300">Click to upload or drag and drop</p>
+                        <p className="text-xs text-slate-500 mt-1">Accepts .csv, .xls, .xlsx files</p>
+                      </div>
+                    </div>
+                    <button onClick={() => deptUploadRef.current?.click()} className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95">
+                      Process Upload
+                    </button>
+                    
+                    {deptUploadReport && (
+                      <div className="mt-6 text-left text-xs bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+                        <div className="flex justify-between items-center font-bold font-heading mb-3 border-b border-slate-200 dark:border-slate-700 pb-2">
+                          Upload Report
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${deptUploadReport.errorCount === 0 ? 'bg-emerald-500/20 text-emerald-500' : 'bg-amber-500/20 text-amber-500'}`}>
+                            {deptUploadReport.successCount} Successful
+                          </span>
+                        </div>
+                        {deptUploadReport.errors && deptUploadReport.errors.length > 0 && (
+                          <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                            {deptUploadReport.errors.map((err, idx) => (
+                              <div key={idx} className="flex gap-2 items-start bg-white dark:bg-slate-900 p-2 rounded border border-rose-100 dark:border-rose-900/30 text-rose-600 dark:text-rose-400">
+                                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                                <div>
+                                  <strong className="block text-[10px] uppercase font-mono mb-0.5">{err.record}</strong>
+                                  <span className="opacity-90">{err.reason}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1845,11 +2165,11 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                       <Book className="w-5 h-5 text-rose-500" />
                       Subject Syllabus Registry
                     </h3>
-                    
+
                     <div className="flex flex-wrap items-center gap-2">
                       <AnimatePresence>
                         {selectedSubjects.length > 0 && (
-                          <motion.button 
+                          <motion.button
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.9 }}
@@ -1862,7 +2182,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                         )}
                       </AnimatePresence>
                       <span className="text-xs font-bold text-slate-500 uppercase font-mono ml-2">Regulation:</span>
-                      <select 
+                      <select
                         value={subjectRegulationFilter}
                         onChange={(e) => setSubjectRegulationFilter(e.target.value)}
                         className="px-3 py-1.5 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-rose-500/30 appearance-none min-w-[100px]"
@@ -1874,14 +2194,14 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                       </select>
                     </div>
                   </div>
-                  
+
                   <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden">
                     <table className="w-full text-left border-collapse text-xs">
                       <thead className="bg-slate-50 dark:bg-slate-950 text-[10px] font-bold text-slate-400 uppercase">
                         <tr>
                           <th className="px-4 py-4 w-10">
-                            <input 
-                              type="checkbox" 
+                            <input
+                              type="checkbox"
                               checked={filteredSubjects.length > 0 && selectedSubjects.length === filteredSubjects.length}
                               onChange={toggleSelectAllSubjects}
                               className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300"
@@ -1903,8 +2223,8 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                           filteredSubjects.map(s => (
                             <tr key={s.id} className={selectedSubjects.includes(s.id) ? "bg-rose-50/50 dark:bg-rose-900/10" : ""}>
                               <td className="px-4 py-4 w-10">
-                                <input 
-                                  type="checkbox" 
+                                <input
+                                  type="checkbox"
                                   checked={selectedSubjects.includes(s.id)}
                                   onChange={() => toggleSubjectSelect(s.id)}
                                   className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300"
@@ -1947,13 +2267,13 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Regulation</label>
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           list="regulation-options"
-                          placeholder="e.g. R-22" 
-                          value={newSubjRegulation} 
-                          onChange={(e) => setNewSubjRegulation(e.target.value)} 
-                          className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-bold bg-slate-50 dark:bg-slate-950" 
+                          placeholder="e.g. R-22"
+                          value={newSubjRegulation}
+                          onChange={(e) => setNewSubjRegulation(e.target.value)}
+                          className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-bold bg-slate-50 dark:bg-slate-950"
                         />
                         <datalist id="regulation-options">
                           <option value="R-16" />
@@ -2066,7 +2386,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                         {[92, 94, 91, 95, 96].map((v, i) => (
                           <div key={i} className="flex flex-col items-center gap-2">
                             <div className="w-8 bg-rose-600 rounded-t-lg transition-all hover:brightness-110" style={{ height: `${v * 1.2}px` }} />
-                            <span className="text-[10px] text-slate-400 font-bold font-sans">Month {i+1}</span>
+                            <span className="text-[10px] text-slate-400 font-bold font-sans">Month {i + 1}</span>
                           </div>
                         ))}
                       </div>
@@ -2107,7 +2427,16 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                       <BarChart3 className="w-5 h-5 text-rose-500" />
                       Student Grades & Results Directory
                     </h3>
-                    <span className="text-[10px] text-slate-400 font-bold font-mono">EXAM RESULTS ARCHIVE</span>
+                    <div className="flex items-center gap-4">
+                      <input 
+                        type="text" 
+                        placeholder="Search student or semester..." 
+                        value={resultsSearchQuery}
+                        onChange={e => setResultsSearchQuery(e.target.value)}
+                        className="px-4 py-2 rounded-xl text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-rose-500/20"
+                      />
+                      <span className="text-[10px] text-slate-400 font-bold font-mono">EXAM RESULTS ARCHIVE</span>
+                    </div>
                   </div>
 
                   <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden">
@@ -2116,62 +2445,127 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                         <tr>
                           <th className="px-6 py-4">Student</th>
                           <th className="px-6 py-4">Semester</th>
-                          <th className="px-6 py-4">GPA Score</th>
+                          <th className="px-6 py-4">Subjects</th>
+                          <th className="px-6 py-4">SGPA</th>
                           <th className="px-6 py-4">Status</th>
+                          <th className="px-6 py-4 text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-                        {resultsList.map(r => (
-                          <tr key={r.id}>
-                            <td className="px-6 py-4 font-bold">{r.student}</td>
-                            <td className="px-6 py-4 text-slate-500 font-semibold">{r.semester}</td>
-                            <td className="px-6 py-4 font-mono font-bold text-rose-500">{r.GPA}</td>
-                            <td className="px-6 py-4">
-                              <span className={`px-2 py-0.5 rounded font-bold text-[9px] ${r.status === 'Published' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
-                                {r.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
+                        {resultsLoading ? (
+                          <tr><td colSpan="5" className="p-8 text-center text-slate-500 font-semibold">Loading results...</td></tr>
+                        ) : resultsList.length === 0 ? (
+                          <tr><td colSpan="5" className="p-8 text-center text-slate-500 font-semibold">No results uploaded yet.</td></tr>
+                        ) : (
+                          Object.values(resultsList.reduce((acc, r) => {
+                            const key = `${r.studentId}_${r.semester}`;
+                            if (!acc[key]) {
+                              acc[key] = { ...r, _ids: [r._id], allSubjects: r.subjects || [] };
+                            } else {
+                              acc[key]._ids.push(r._id);
+                              if (r.subjects) acc[key].allSubjects.push(...r.subjects);
+                              if (r.resultState === 'visible') acc[key].resultState = 'visible'; 
+                            }
+                            return acc;
+                          }, {})).filter(r => 
+                            !resultsSearchQuery || 
+                            r.studentName?.toLowerCase().includes(resultsSearchQuery.toLowerCase()) ||
+                            r.rollNumber?.toLowerCase().includes(resultsSearchQuery.toLowerCase()) ||
+                            r.studentId?.toLowerCase().includes(resultsSearchQuery.toLowerCase()) ||
+                            r.semester?.toLowerCase().includes(resultsSearchQuery.toLowerCase())
+                          ).map(r => (
+                            <tr key={r._ids[0]}>
+                              <td className="px-6 py-4">
+                                <p className="font-bold">{r.studentName}</p>
+                                <p className="text-[10px] text-slate-400 font-mono">{r.rollNumber || r.studentId}</p>
+                              </td>
+                              <td className="px-6 py-4 text-slate-500 font-semibold">{r.semester}</td>
+                              <td className="px-6 py-4 text-slate-500 text-[10px] max-w-[200px] truncate" title={r.allSubjects?.map(s => s.courseName || s.subjectName).join(', ')}>
+                                {r.allSubjects?.map(s => s.courseName || s.subjectName).join(', ') || '-'}
+                              </td>
+                              <td className="px-6 py-4 font-mono font-bold text-rose-500">{r.sgpa || r.cgpa || '-'}</td>
+                              <td className="px-6 py-4">
+                                <span className={`px-2 py-0.5 rounded font-bold text-[9px] uppercase ${r.resultState === 'visible' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                                  {r.resultState}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-right space-x-2">
+                                <button 
+                                  onClick={() => handleToggleResultBlock(r._ids, r.resultState)} 
+                                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${r.resultState === 'visible' ? 'bg-amber-50 hover:bg-amber-100 text-amber-600' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600'}`}
+                                >
+                                  {r.resultState === 'visible' ? 'Block' : 'Unblock'}
+                                </button>
+                                <button onClick={() => handleDeleteResult(r._ids)} className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-[10px] font-bold transition-colors">
+                                  Delete
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>
                 </div>
               )}
 
-              {/* VIEW 18: PUBLISH RESULTS */}
-              {activeSubTab === 'publish-results' && (
-                <div className="max-w-md mx-auto space-y-6">
+              {/* VIEW 18: UPLOAD RESULTS */}
+              {activeSubTab === 'upload-results' && (
+                <div className="max-w-2xl mx-auto space-y-6">
                   <h3 className="text-lg font-bold font-heading flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-rose-500" />
-                    Publish Term Results
+                    <UploadCloud className="w-5 h-5 text-rose-500" />
+                    Upload Term Results
                   </h3>
                   <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-sm space-y-5">
-                    <div className="p-4 bg-rose-500/5 border border-rose-500/10 rounded-2xl flex gap-3 text-xs leading-relaxed text-rose-600 dark:text-rose-400 font-semibold">
+                    <div className="p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl flex gap-3 text-xs leading-relaxed text-indigo-600 dark:text-indigo-400 font-semibold">
                       <Info className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                      <span><strong>Accreditation Warning</strong>: Publishing results transfers grades from draft states to permanent transcripts. This action is visible to all students instantly.</span>
+                      <span><strong>Instructions:</strong> Upload a CSV or Excel file containing student results. Ensure you map columns properly (studentId or email, semester, cgpa). Invalid students will be skipped automatically.</span>
                     </div>
 
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="font-bold text-slate-500">Active Semester:</span>
-                      <span className="font-bold">Spring 2026</span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="font-bold text-slate-500">Draft Results Pending:</span>
-                      <span className="font-bold text-rose-500">{resultsList.filter(r => r.status === 'Draft').length} submissions</span>
+                    <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-8 bg-slate-50/50 dark:bg-slate-900/50 transition-colors hover:bg-slate-50 dark:hover:bg-slate-900">
+                      <UploadCloud className="w-10 h-10 text-slate-400 mb-3" />
+                      <p className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-1">Select CSV or Excel file</p>
+                      <p className="text-xs text-slate-400 font-medium mb-4">Max file size: 10MB</p>
+                      <input 
+                        type="file" 
+                        ref={resultUploadRef}
+                        accept=".csv, .xlsx, .xls"
+                        onChange={handleResultBulkUpload} 
+                        className="hidden" 
+                      />
+                      <button 
+                        onClick={() => resultUploadRef.current?.click()}
+                        disabled={isUploadingResults}
+                        className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-white dark:bg-slate-700 dark:hover:bg-slate-600 font-bold text-xs rounded-xl shadow-sm transition-all"
+                      >
+                        {isUploadingResults ? 'Uploading...' : 'Browse Files'}
+                      </button>
                     </div>
 
-                    <button
-                      onClick={handlePublishResults}
-                      disabled={resultsLoading || resultsList.filter(r => r.status === 'Draft').length === 0}
-                      className="w-full py-3.5 bg-rose-600 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {resultsLoading ? (
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto" />
-                      ) : (
-                        'Publish All Pending Results'
-                      )}
-                    </button>
+                    {uploadReport && (
+                      <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-sans">
+                        <h4 className="text-sm font-bold mb-3 flex justify-between items-center">
+                          Upload Report
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${uploadReport.errorCount === 0 ? 'bg-emerald-500/20 text-emerald-500' : 'bg-amber-500/20 text-amber-500'}`}>
+                            {uploadReport.successCount} Successful
+                          </span>
+                        </h4>
+                        
+                        {uploadReport.errors && uploadReport.errors.length > 0 && (
+                          <div className="space-y-2 mt-4">
+                            <span className="text-xs font-bold text-rose-500 uppercase tracking-wider block mb-2">Skipped Records:</span>
+                            <div className="max-h-40 overflow-y-auto space-y-1.5 pr-2">
+                              {uploadReport.errors.map((err, idx) => (
+                                <div key={idx} className="text-[10px] p-2 bg-rose-500/10 text-rose-600 rounded-lg font-mono flex items-start gap-2 border border-rose-500/20">
+                                  <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                                  <span>{err}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -2188,11 +2582,10 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                     {/* Chat Messages Log */}
                     <div className="h-64 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 p-4 rounded-2xl flex flex-col gap-3 overflow-y-auto font-sans">
                       {chatMessages.map((msg, idx) => (
-                        <div key={idx} className={`max-w-[80%] flex flex-col gap-1 p-3 rounded-2xl text-xs font-semibold ${
-                          msg.sender === 'System Admin'
+                        <div key={idx} className={`max-w-[80%] flex flex-col gap-1 p-3 rounded-2xl text-xs font-semibold ${msg.sender === 'System Admin'
                             ? 'bg-rose-600 text-white self-end rounded-tr-none'
                             : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 self-start rounded-tl-none border border-slate-200/40 dark:border-slate-800/40'
-                        }`}>
+                          }`}>
                           <div className="flex justify-between items-center gap-4 text-[9px] opacity-75">
                             <span>{msg.sender}</span>
                             <span>{msg.time}</span>
@@ -2353,20 +2746,20 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                     {(smsTarget === 'Specific Student' || smsTarget === 'Single User') && (
                       <div className="relative">
                         <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Search User (Name, Roll No, Email)</label>
-                        <input 
-                          type="text" 
-                          placeholder="Search..." 
-                          value={smsSearchQuery} 
-                          onChange={(e) => handleSmsSearch(e.target.value, smsTarget, smsSingleUserType)} 
-                          className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-bold bg-slate-50 dark:bg-slate-950 font-sans" 
+                        <input
+                          type="text"
+                          placeholder="Search..."
+                          value={smsSearchQuery}
+                          onChange={(e) => handleSmsSearch(e.target.value, smsTarget, smsSingleUserType)}
+                          className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-bold bg-slate-50 dark:bg-slate-950 font-sans"
                         />
                         {isSearchingSmsUsers && <div className="absolute right-4 top-10 text-xs text-slate-400">Loading...</div>}
-                        
+
                         {smsSearchResults.length > 0 && !smsSelectedUser && (
                           <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-48 overflow-y-auto">
                             {smsSearchResults.map(user => (
-                              <div 
-                                key={user._id} 
+                              <div
+                                key={user._id}
                                 onClick={() => { setSmsSelectedUser(user); setSmsSearchResults([]); setSmsSearchQuery(user.name); }}
                                 className="px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-700 last:border-0"
                               >
@@ -2376,7 +2769,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                             ))}
                           </div>
                         )}
-                        
+
                         {smsSelectedUser && (
                           <div className="mt-3 p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200/50 dark:border-emerald-800/30 rounded-xl flex justify-between items-center">
                             <div>
@@ -2495,7 +2888,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                     <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-sm flex items-center justify-between">
                       <div className="space-y-1">
                         <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Active Users</span>
-                        <p className="text-2xl font-heading font-black">{activeUsers}</p>
+                        <p className="text-2xl font-heading font-black">{studentsList.length + facultyList.length}</p>
                       </div>
                       <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl"><Activity className="w-5 h-5" /></div>
                     </div>
@@ -2508,8 +2901,8 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                     </div>
                     <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-sm flex items-center justify-between">
                       <div className="space-y-1">
-                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Database Clusters</span>
-                        <p className="text-2xl font-heading font-black">Healthy</p>
+                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Database Storage</span>
+                        <p className="text-2xl font-heading font-black">{dbStorage} GB</p>
                       </div>
                       <div className="p-3 bg-indigo-500/10 text-indigo-500 rounded-xl"><Database className="w-5 h-5" /></div>
                     </div>
@@ -2523,10 +2916,35 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                   </div>
 
                   <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-sm space-y-4 font-sans">
-                    <h3 className="text-md font-bold font-heading flex items-center gap-2">
-                      <Database className="w-5 h-5 text-rose-500" />
-                      Live System Console
-                    </h3>
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-md font-bold font-heading flex items-center gap-2">
+                        <Database className="w-5 h-5 text-rose-500" />
+                        Live System Console
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => setSysLog([])} 
+                          className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 transition-colors"
+                        >
+                          Clear Logs
+                        </button>
+                        <button 
+                          onClick={() => {
+                            const element = document.createElement("a");
+                            const file = new Blob([sysLog.join('\\n')], {type: 'text/plain'});
+                            element.href = URL.createObjectURL(file);
+                            element.download = "system_logs.txt";
+                            document.body.appendChild(element);
+                            element.click();
+                            document.body.removeChild(element);
+                          }} 
+                          className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-800 text-xs font-bold text-rose-600 dark:text-rose-400 transition-colors flex items-center gap-1.5"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          Export
+                        </button>
+                      </div>
+                    </div>
                     <div className="h-64 bg-slate-950 border border-slate-800 p-4 rounded-xl font-mono text-[10px] text-emerald-400 space-y-2 overflow-y-auto">
                       {sysLog.map((log, idx) => (
                         <div key={idx} className="break-words">
@@ -2550,7 +2968,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                     System Configuration Settings
                   </h3>
                   <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-sm space-y-6">
-                    
+
                     <div className="space-y-4">
                       <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-2">Global System</h4>
                       <label className="flex items-center gap-3 cursor-pointer">
@@ -2588,7 +3006,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                     </div>
 
                     <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-                      <button 
+                      <button
                         onClick={(e) => { e.preventDefault(); triggerLocalToast('success', 'Configuration saved successfully'); }}
                         className="px-6 py-2.5 rounded-xl text-sm font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-md shadow-rose-600/20 transition-all active:scale-95">
                         Save Configuration
@@ -2604,11 +3022,11 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
           {/* Delete Subject Modal */}
           <AnimatePresence>
             {deleteSubjectModalOpen && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
               >
-                <motion.div 
+                <motion.div
                   initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
                   className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200/60 dark:border-slate-800/80"
                 >
@@ -2621,13 +3039,13 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                       You are about to delete <span className="font-bold text-rose-500">{subjectToDelete?.name}</span> ({subjectToDelete?.code}). This action cannot be undone. Are you completely sure?
                     </p>
                     <div className="flex w-full gap-3 pt-4">
-                      <button 
+                      <button
                         onClick={() => { setDeleteSubjectModalOpen(false); setSubjectToDelete(null); }}
                         className="flex-1 py-3 px-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs transition-colors"
                       >
                         Cancel
                       </button>
-                      <button 
+                      <button
                         onClick={handleDeleteSubject}
                         className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs shadow-md shadow-red-500/20 transition-all active:scale-95"
                       >
@@ -2643,11 +3061,11 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
           {/* Bulk Delete Subject Modal */}
           <AnimatePresence>
             {bulkDeleteModalOpen && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
               >
-                <motion.div 
+                <motion.div
                   initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
                   className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200/60 dark:border-slate-800/80"
                 >
@@ -2660,19 +3078,66 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                       You are about to delete <span className="font-bold text-rose-500">{selectedSubjects.length}</span> subjects. This action cannot be undone. Are you completely sure?
                     </p>
                     <div className="flex w-full gap-3 pt-4">
-                      <button 
+                      <button
                         onClick={() => setBulkDeleteModalOpen(false)}
                         className="flex-1 py-3 px-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs transition-colors"
                       >
                         Cancel
                       </button>
-                      <button 
+                      <button
                         onClick={handleBulkDeleteSubjects}
                         className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs shadow-md shadow-red-500/20 transition-all active:scale-95"
                       >
                         Delete All
                       </button>
                     </div>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {editStudentData && (
+            <EditStudentModal 
+              student={editStudentData} 
+              onClose={() => setEditStudentData(null)} 
+              onSave={handleSaveStudentEdit} 
+            />
+          )}
+
+          {/* Delete Department Modal */}
+          <AnimatePresence>
+            {deleteDeptModalOpen && deptToDelete && (
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"
+              >
+                <motion.div
+                  initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
+                  className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-6 md:p-8 max-w-sm w-full border border-slate-200 dark:border-slate-800 text-center space-y-6"
+                >
+                  <div className="w-16 h-16 bg-rose-500/10 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <Trash2 className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold font-heading mb-2">Delete Department?</h3>
+                    <p className="text-sm text-slate-500">
+                      Are you sure you want to permanently delete the department <strong>{deptToDelete.name}</strong>? This action cannot be undone.
+                    </p>
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      onClick={() => { setDeleteDeptModalOpen(false); setDeptToDelete(null); }}
+                      className="flex-1 py-3 px-4 rounded-xl font-bold text-sm bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleDeleteDept}
+                      className="flex-1 py-3 px-4 rounded-xl font-bold text-sm bg-rose-600 hover:bg-rose-700 text-white transition-colors shadow-lg shadow-rose-500/30"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </motion.div>
               </motion.div>

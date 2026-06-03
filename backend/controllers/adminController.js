@@ -44,6 +44,52 @@ export const toggleStudentBlock = async (req, res) => {
   }
 };
 
+// @desc    Update Student Details
+// @route   PUT /api/admin/student/:id
+// @access  Private/Admin
+export const updateStudentProfile = async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.id);
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+    
+    // Ensure admin belongs to the same college as the student (College Isolation)
+    if (req.user.collegeName !== student.collegeName) {
+      return res.status(403).json({ message: 'Not authorized to update student from another college' });
+    }
+
+    const {
+      name, email, department, semester, gender, dateOfBirth,
+      mobileNumber, fatherName, motherName, parentMobileNumber, bloodGroup,
+      rollNumber, batch, degree, programCode, semesterNumber, section
+    } = req.body;
+
+    if (name !== undefined) student.name = name;
+    if (email !== undefined) student.email = email;
+    if (department !== undefined) student.department = department;
+    if (semester !== undefined) student.semester = semester;
+    if (gender !== undefined) student.gender = gender;
+    if (dateOfBirth !== undefined) student.dateOfBirth = dateOfBirth;
+    if (mobileNumber !== undefined) student.mobileNumber = mobileNumber;
+    if (fatherName !== undefined) student.fatherName = fatherName;
+    if (motherName !== undefined) student.motherName = motherName;
+    if (parentMobileNumber !== undefined) student.parentMobileNumber = parentMobileNumber;
+    if (bloodGroup !== undefined) student.bloodGroup = bloodGroup;
+    if (rollNumber !== undefined) student.rollNumber = rollNumber;
+    if (batch !== undefined) student.batch = batch;
+    if (degree !== undefined) student.degree = degree;
+    if (programCode !== undefined) student.programCode = programCode;
+    if (semesterNumber !== undefined) student.semesterNumber = semesterNumber;
+    if (section !== undefined) student.section = section;
+
+    const updatedStudent = await student.save();
+    res.json(updatedStudent);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error updating student details' });
+  }
+};
+
 // @desc    Get all faculty
 // @route   GET /api/admin/faculty
 // @access  Private/Admin
