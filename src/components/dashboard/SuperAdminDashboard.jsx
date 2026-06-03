@@ -298,7 +298,9 @@ export default function SuperAdminDashboard({ user, onLogout }) {
                           <div className="flex items-center space-x-2">
                             <input 
                               type="date"
-                              className="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs focus:ring-indigo-500 focus:border-indigo-500"
+                              className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer w-36"
+                              style={{ colorScheme: 'dark' }}
+                              onClick={(e) => e.target.showPicker && e.target.showPicker()}
                               value={college.subscriptionExpiry ? new Date(college.subscriptionExpiry).toISOString().split('T')[0] : ''}
                               onChange={(e) => handleUpdateSubscription(college._id, e.target.value)}
                             />
@@ -355,6 +357,8 @@ export default function SuperAdminDashboard({ user, onLogout }) {
                     <tr className="bg-slate-800/50 border-b border-slate-800 text-slate-400 text-sm">
                       <th className="p-4 font-medium">Name</th>
                       <th className="p-4 font-medium">Email</th>
+                      <th className="p-4 font-medium">Age</th>
+                      <th className="p-4 font-medium">Phone Number</th>
                       <th className="p-4 font-medium">Role</th>
                       <th className="p-4 font-medium">College</th>
                     </tr>
@@ -364,6 +368,10 @@ export default function SuperAdminDashboard({ user, onLogout }) {
                       <tr key={u._id || idx} className="hover:bg-slate-800/20 transition-colors text-sm">
                         <td className="p-4 font-medium text-slate-200">{u.name}</td>
                         <td className="p-4 text-slate-400">{u.email}</td>
+                        <td className="p-4 text-slate-400">
+                          {u.dateOfBirth ? Math.max(0, Math.floor((new Date() - new Date(u.dateOfBirth).getTime()) / 3.15576e+10)) : 'N/A'}
+                        </td>
+                        <td className="p-4 text-slate-400">{u.phoneNumber || u.mobileNumber || 'N/A'}</td>
                         <td className="p-4">
                            <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium capitalize border ${
                              u.role === 'admin' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
@@ -378,7 +386,7 @@ export default function SuperAdminDashboard({ user, onLogout }) {
                     ))}
                     {allUsers.length === 0 && (
                       <tr>
-                        <td colSpan="4" className="p-8 text-center text-slate-500 text-sm">
+                        <td colSpan="6" className="p-8 text-center text-slate-500 text-sm">
                           No users found.
                         </td>
                       </tr>
@@ -434,19 +442,19 @@ export default function SuperAdminDashboard({ user, onLogout }) {
                     <label className="block text-sm font-medium text-slate-300 mb-1">Phone Number</label>
                     <div className="relative">
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                      <input type="tel" value={newAdmin.phoneNumber} onChange={(e) => setNewAdmin({ ...newAdmin, phoneNumber: e.target.value })} className="w-full pl-10 pr-4 py-2.5 bg-slate-950/50 border border-slate-700 rounded-xl text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" placeholder="+1 (555) 000-0000" />
+                      <input type="tel" required value={newAdmin.phoneNumber} onChange={(e) => setNewAdmin({ ...newAdmin, phoneNumber: e.target.value })} className="w-full pl-10 pr-4 py-2.5 bg-slate-950/50 border border-slate-700 rounded-xl text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" placeholder="+1 (555) 000-0000" />
                     </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-1">State / Location</label>
                     <div className="relative">
                       <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                      <input type="text" value={newAdmin.state} onChange={(e) => setNewAdmin({ ...newAdmin, state: e.target.value })} className="w-full pl-10 pr-4 py-2.5 bg-slate-950/50 border border-slate-700 rounded-xl text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" placeholder="California" />
+                      <input type="text" required value={newAdmin.state} onChange={(e) => setNewAdmin({ ...newAdmin, state: e.target.value })} className="w-full pl-10 pr-4 py-2.5 bg-slate-950/50 border border-slate-700 rounded-xl text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" placeholder="California" />
                     </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-1">Age</label>
-                    <input type="number" value={newAdmin.age} onChange={(e) => setNewAdmin({ ...newAdmin, age: e.target.value })} className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-700 rounded-xl text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" placeholder="35" />
+                    <input type="number" required value={newAdmin.age} onChange={(e) => setNewAdmin({ ...newAdmin, age: e.target.value })} className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-700 rounded-xl text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" placeholder="35" />
                   </div>
                 </div>
                 
