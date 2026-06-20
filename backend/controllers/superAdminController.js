@@ -153,7 +153,7 @@ export const createAdmin = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Creation not allowed. This college is blocked.' });
     }
 
-    const defaultPassword = 'sai111';
+    const defaultPassword = 'Prabhas@123';
 
     const newAdmin = await Admin.create({
       name,

@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { sendEmail } from '../config/mail.js';
+import { validatePassword } from '../utils/validatePassword.js';
 
 // Helper to get model by role
 const getModelByRole = (role) => {
@@ -28,48 +29,104 @@ export const loginUser = async (req, res) => {
 
     const user = await Model.findOne({ email }).select('+password');
 
-    if (user && (await user.matchPassword(password))) {
-      // Verify role matches login portal
-      if (portalRole && user.role !== portalRole) {
-        return res.status(403).json({ 
-          message: 'Access denied. Please use your respective login portal.' 
-        });
-      }
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
 
-      // Check if user is blocked
-      if (user.blocked) {
+    // Check if account is locked
+    if (user.lockUntil && user.lockUntil > Date.now()) {
+      const lockDurationMs = user.lockUntil - Date.now();
+      const lockDurationMinutes = Math.ceil(lockDurationMs / 60000);
+      return res.status(403).json({
+        message: `Account is locked. Please try again after ${lockDurationMinutes} minutes.`,
+        lockDurationMinutes
+      });
+    }
+
+    const isMatch = await user.matchPassword(password);
+
+    if (!isMatch) {
+      user.loginAttempts = (user.loginAttempts || 0) + 1;
+      
+      const maxAttempts = parseInt(process.env.MAX_LOGIN_ATTEMPTS) || 5;
+      const lockDurationMs = parseInt(process.env.LOCK_DURATION_MS) || 15 * 60 * 1000;
+      
+      let remainingAttempts = Math.max(0, maxAttempts - user.loginAttempts);
+
+      if (user.loginAttempts >= maxAttempts) {
+        user.lockUntil = Date.now() + lockDurationMs;
+        await user.save({ validateBeforeSave: false });
         return res.status(403).json({
-          message: 'Your account has been blocked by an administrator.'
+          message: `Account locked due to too many failed attempts. Please try again after ${Math.ceil(lockDurationMs / 60000)} minutes.`,
+          lockDurationMinutes: Math.ceil(lockDurationMs / 60000),
+          remainingAttempts: 0
         });
       }
 
-      // Check College Blocked / Subscription status
-      if (user.role !== 'superadmin' && user.collegeName) {
-        const college = await College.findOne({ name: user.collegeName });
-        if (college) {
-          if (college.isBlocked) {
-            return res.status(403).json({ message: 'Your college has been blocked by the Super Admin.' });
-          }
-          if (college.subscriptionExpiry && new Date() > new Date(college.subscriptionExpiry)) {
-            return res.status(403).json({ message: 'Your college subscription has expired. Please contact support.' });
-          }
+      await user.save({ validateBeforeSave: false });
+      return res.status(401).json({ 
+        message: 'Invalid email or password',
+        remainingAttempts 
+      });
+    }
+
+    // Password matches! Reset login attempts and lock status
+    let needsSave = false;
+    if (user.loginAttempts > 0 || user.lockUntil) {
+      user.loginAttempts = 0;
+      user.lockUntil = undefined;
+      needsSave = true;
+    }
+
+    // Check if the current password is weak, force change if so
+    if (!validatePassword(password).isValid) {
+      user.isFirstLogin = true;
+      needsSave = true;
+    }
+
+    if (needsSave) {
+      await user.save({ validateBeforeSave: false });
+    }
+
+    // Verify role matches login portal
+    if (portalRole && user.role !== portalRole) {
+      return res.status(403).json({ 
+        message: 'Access denied. Please use your respective login portal.' 
+      });
+    }
+
+    // Check if user is blocked
+    if (user.blocked) {
+      return res.status(403).json({
+        message: 'Your account has been blocked by an administrator.'
+      });
+    }
+
+    // Check College Blocked / Subscription status
+    if (user.role !== 'superadmin' && user.collegeName) {
+      const college = await College.findOne({ name: user.collegeName });
+      if (college) {
+        if (college.isBlocked) {
+          return res.status(403).json({ message: 'Your college has been blocked by the Super Admin.' });
+        }
+        if (college.subscriptionExpiry && new Date() > new Date(college.subscriptionExpiry)) {
+          return res.status(403).json({ message: 'Your college subscription has expired. Please contact support.' });
         }
       }
-
-      const token = generateToken(res, user._id, user.role);
-
-      res.json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        profilePhoto: user.profilePhoto,
-        isFirstLogin: user.isFirstLogin,
-        token,
-      });
-    } else {
-      res.status(401).json({ message: 'Invalid email or password' });
     }
+
+    const token = generateToken(res, user._id, user.role);
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      profilePhoto: user.profilePhoto,
+      isFirstLogin: user.isFirstLogin,
+      token,
+    });
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error during login' });
@@ -256,7 +313,12 @@ const handleRoleSpecificReset = async (Model, expectedRole, req, res) => {
       return res.status(400).json({ message: 'Invalid or expired token' });
     }
 
-    // Set new password (Model pre-save hook normally hashes it, but prompt specified using bcrypt.hash manually. We will just use the pre-save hook which relies on setting user.password, OR explicitly hash it. The prompt says "hash new password using bcrypt... bcrypt.hash(newPassword, 10)". To prevent double hashing if the model has a pre-save hook, we will just assign the password because the existing User.js has a pre-save hook. Wait, SuperAdmin model we made also has a pre-save hook! Admin, Faculty, Student also have pre-save hooks. So assigning user.password = req.body.password is the correct way, the hook will hash it.)
+    const passwordValidation = validatePassword(req.body.password);
+    if (!passwordValidation.isValid) {
+      return res.status(400).json({ message: passwordValidation.errors[0], errors: passwordValidation.errors });
+    }
+
+    // Set new password
     user.password = req.body.password;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
@@ -297,8 +359,9 @@ export const changePasswordFirstLogin = async (req, res) => {
   try {
     const { password } = req.body;
 
-    if (!password || password.length < 6) {
-      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      return res.status(400).json({ message: passwordValidation.errors[0], errors: passwordValidation.errors });
     }
 
     const Model = getModelByRole(req.user.role);

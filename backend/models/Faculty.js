@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import { validatePassword } from '../utils/validatePassword.js';
 
 const facultySchema = new mongoose.Schema(
   {
@@ -17,7 +18,14 @@ const facultySchema = new mongoose.Schema(
     password: {
       type: String,
       required: [true, 'Please provide a password'],
-      minlength: 6,
+      validate: {
+        validator: function (v) {
+          if (!this.isModified || !this.isModified('password')) return true;
+          if (v.startsWith('$2a$') || v.startsWith('$2b$')) return true;
+          return validatePassword(v).isValid;
+        },
+        message: 'Password does not meet complexity requirements',
+      },
       select: false,
     },
     role: {
@@ -32,6 +40,15 @@ const facultySchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    assignedSubjects: [
+      {
+        subjectCode: String,
+        subjectName: String,
+        semester: String,
+        year: String,
+        section: String,
+      }
+    ],
     facultyId: {
       type: String,
       default: '',
@@ -76,6 +93,14 @@ const facultySchema = new mongoose.Schema(
     },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
+    loginAttempts: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    lockUntil: {
+      type: Date,
+    },
   },
   {
     timestamps: true,

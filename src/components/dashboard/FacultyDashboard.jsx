@@ -7,6 +7,7 @@ import {
   Bell, User, Settings,
   ChevronDown, CalendarDays, MessageSquare, ClipboardList, Wallet, BookOpen, UserCircle
 } from 'lucide-react';
+import FacultyAttendanceMarkingTab from './FacultyAttendanceMarkingTab';
 
 const DashboardTab = ({ user, currentTime, classrooms, gradingQueue, handleGrade, triggerLocalToast, setShowAddStudentModal }) => {
   return (
@@ -165,7 +166,7 @@ const DashboardTab = ({ user, currentTime, classrooms, gradingQueue, handleGrade
   );
 };
 
-const AttendanceMarkingTab = () => <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm"><h3 className="text-lg font-bold font-heading">Attendance Marking (Class Wise)</h3><p className="text-slate-500 mt-2">Feature coming soon.</p></div>;
+const AttendanceMarkingTab = ({ user, triggerLocalToast }) => <FacultyAttendanceMarkingTab user={user} triggerLocalToast={triggerLocalToast} />;
 const SubjectsTab = () => <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm"><h3 className="text-lg font-bold font-heading">My Subjects</h3><p className="text-slate-500 mt-2">Feature coming soon.</p></div>;
 const FacultyAttendanceTab = () => <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm"><h3 className="text-lg font-bold font-heading">My Attendance</h3><p className="text-slate-500 mt-2">Feature coming soon.</p></div>;
 const TimetableTab = () => <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm"><h3 className="text-lg font-bold font-heading">Timetable</h3><p className="text-slate-500 mt-2">Feature coming soon.</p></div>;
@@ -388,7 +389,7 @@ export default function FacultyDashboard({ user, onLogout, currentTime }) {
         <main className="flex-1 overflow-y-auto p-6 md:p-8">
           <div className="max-w-7xl mx-auto">
             {activeTab === 'dashboard' && <DashboardTab user={user} currentTime={currentTime} classrooms={classrooms} gradingQueue={gradingQueue} handleGrade={handleGrade} triggerLocalToast={triggerLocalToast} setShowAddStudentModal={setShowAddStudentModal} />}
-            {activeTab === 'attendance_marking' && <AttendanceMarkingTab />}
+            {activeTab === 'attendance_marking' && <AttendanceMarkingTab user={user} triggerLocalToast={triggerLocalToast} />}
             {activeTab === 'subjects' && <SubjectsTab />}
             {activeTab === 'faculty_attendance' && <FacultyAttendanceTab />}
             {activeTab === 'timetable' && <TimetableTab />}

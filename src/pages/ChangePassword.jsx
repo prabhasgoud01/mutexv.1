@@ -5,6 +5,7 @@ import { KeyRound, ShieldAlert, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import api from '../services/api';
 import Toast from '../components/Toast';
 import { motion } from 'framer-motion';
+import PasswordValidator, { isPasswordValid } from '../components/PasswordValidator';
 
 export default function ChangePassword() {
   const [newPassword, setNewPassword] = useState('');
@@ -33,8 +34,8 @@ export default function ChangePassword() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!newPassword || newPassword.length < 6) {
-      triggerToast('error', 'Password must be at least 6 characters long.');
+    if (!isPasswordValid(newPassword)) {
+      triggerToast('error', 'Password does not meet the security requirements.');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -109,6 +110,7 @@ export default function ChangePassword() {
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            <PasswordValidator password={newPassword} />
           </div>
           
           <div>
@@ -129,8 +131,8 @@ export default function ChangePassword() {
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full mt-4 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-white font-bold text-sm shadow-xl transition-all cursor-pointer hover:brightness-105 active:scale-[0.98] bg-rose-600 hover:bg-rose-700 disabled:opacity-75 disabled:pointer-events-none"
+            disabled={loading || !isPasswordValid(newPassword) || newPassword !== confirmPassword}
+            className="w-full mt-4 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-white font-bold text-sm shadow-xl transition-all cursor-pointer hover:brightness-105 active:scale-[0.98] bg-rose-600 hover:bg-rose-700 disabled:opacity-75 disabled:pointer-events-none disabled:bg-slate-400"
           >
             {loading ? (
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

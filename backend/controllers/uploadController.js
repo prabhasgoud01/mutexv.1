@@ -49,7 +49,7 @@ export const uploadStudents = async (req, res) => {
     const records = await parseFileBuffer(req.file.buffer, req.file.originalname);
     
     // Validate and process records
-    const defaultPassword = 'sai111';
+    const defaultPassword = 'Prabhas@123';
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
     
     const studentsToInsert = [];
@@ -159,7 +159,7 @@ export const uploadFaculty = async (req, res) => {
 
     const records = await parseFileBuffer(req.file.buffer, req.file.originalname);
     
-    const defaultPassword = 'sai111';
+    const defaultPassword = 'Prabhas@123';
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
     
     console.log("Parsed Faculty:", records);

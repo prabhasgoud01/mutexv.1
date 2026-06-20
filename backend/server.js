@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -14,6 +14,9 @@ import superAdminRoutes from './routes/superAdminRoutes.js';
 import announcementRoutes from './routes/announcementRoutes.js';
 import seedSuperAdmin from './seeder/superAdminSeeder.js';
 import path from 'path';
+import http from 'http';
+import { Server } from 'socket.io';
+import attendanceRoutes from './routes/attendanceRoutes.js';
 
 // Load env vars
 dotenv.config();
@@ -64,6 +67,7 @@ app.use('/api/student', studentRoutes);
 app.use('/api/faculty', facultyRoutes);
 app.use('/api/super-admin', superAdminRoutes);
 app.use('/api/announcements', announcementRoutes);
+app.use('/api/attendance', attendanceRoutes);
 
 // Serve static uploads
 const __dirname = path.resolve();
@@ -84,6 +88,38 @@ app.get("/api/test", (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: [
+      'http://localhost:5173', 
+      'http://127.0.0.1:5173', 
+      process.env.CLIENT_URL,
+      'https://mutexv-1-1.onrender.com',
+      'https://mutexv-1.vercel.app'
+    ].filter(Boolean),
+    credentials: true,
+  }
+});
+
+app.set('io', io);
+
+io.on('connection', (socket) => {
+  console.log(`Socket connected: ${socket.id}`);
+  
+  socket.on('join_student_room', (studentId) => {
+    socket.join(`student_${studentId}`);
+  });
+
+  socket.on('join_college_room', (collegeName) => {
+    socket.join(`college_${collegeName}`);
+  });
+
+  socket.on('disconnect', () => {
+    console.log(`Socket disconnected: ${socket.id}`);
+  });
+});
+
+server.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
 });

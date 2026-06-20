@@ -3,6 +3,7 @@ import { KeyRound, ArrowRight, Landmark, Eye, EyeOff } from 'lucide-react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import api from '../services/api';
 import Toast from '../components/Toast';
+import PasswordValidator, { isPasswordValid } from '../components/PasswordValidator';
 
 export default function StudentResetPassword() {
   const { token } = useParams();
@@ -15,6 +16,9 @@ export default function StudentResetPassword() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isPasswordValid(password)) {
+      return setToast({ show: true, message: 'Password does not meet requirements', type: 'error' });
+    }
     if (password !== confirmPassword) {
       return setToast({ show: true, message: 'Passwords do not match', type: 'error' });
     }
@@ -54,6 +58,7 @@ export default function StudentResetPassword() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              <PasswordValidator password={password} />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700">Confirm Password</label>
@@ -62,7 +67,7 @@ export default function StudentResetPassword() {
                 <input type={showPassword ? "text" : "password"} required minLength={6} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="appearance-none block w-full pl-10 pr-10 px-3 py-3 bg-white border border-slate-300 rounded-xl shadow-sm placeholder-slate-400 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="••••••••" />
               </div>
             </div>
-            <button type="submit" disabled={isLoading} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-lg text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 transition-all disabled:opacity-50">
+            <button type="submit" disabled={isLoading || !isPasswordValid(password) || password !== confirmPassword} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-lg text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 transition-all disabled:opacity-50 disabled:bg-slate-400">
               {isLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <>Save Password <ArrowRight className="w-5 h-5 ml-2" /></>}
             </button>
           </form>

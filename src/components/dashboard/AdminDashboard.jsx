@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import AdminFacultyAssignmentsTab from './AdminFacultyAssignmentsTab';
 import {
   Server, LogOut, Bell, Calendar, FileText, Settings, X, ChevronDown,
   ChevronRight, Activity, Cpu, Database, CheckCircle, Users, Send, Check,
   Info, Menu, Home, GraduationCap, ShieldCheck, Building2, Book,
-  ClipboardList, BarChart3, MessageSquare, AlertTriangle, UserCheck, PlusCircle, UploadCloud, Trash2, Download
+  ClipboardList, BarChart3, MessageSquare, AlertTriangle, UserCheck, PlusCircle, UploadCloud, Trash2, Download, BookOpen
 } from 'lucide-react';
 import api from '../../services/api';
 
@@ -79,6 +80,95 @@ const EditStudentModal = ({ student, onClose, onSave }) => {
             <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold shadow-md hover:bg-indigo-700">Save Changes</button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+};
+
+const AdminAttendanceView = ({ triggerLocalToast }) => {
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [filters, setFilters] = useState({ semester: '', section: '', subjectCode: '' });
+
+  const fetchReports = async () => {
+    setLoading(true);
+    try {
+      const queryParams = new URLSearchParams(filters).toString();
+      const res = await api.get(`/attendance/admin-report?${queryParams}`);
+      setReports(res.data.records);
+    } catch (error) {
+      triggerLocalToast('error', 'Failed to fetch attendance reports');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReports();
+  }, []);
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-lg font-bold font-heading flex items-center gap-2">
+        <ClipboardList className="w-5 h-5 text-rose-500" />
+        Student Attendance Monitoring
+      </h3>
+      
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl p-4 shadow-sm flex flex-wrap gap-4 items-center">
+        <input 
+          type="text" 
+          placeholder="Filter by Semester (e.g. 3)" 
+          value={filters.semester} 
+          onChange={e => setFilters({...filters, semester: e.target.value})}
+          className="px-4 py-2 border border-slate-200 dark:border-slate-700 bg-transparent rounded-xl text-sm"
+        />
+        <input 
+          type="text" 
+          placeholder="Filter by Section (e.g. A)" 
+          value={filters.section} 
+          onChange={e => setFilters({...filters, section: e.target.value})}
+          className="px-4 py-2 border border-slate-200 dark:border-slate-700 bg-transparent rounded-xl text-sm"
+        />
+        <input 
+          type="text" 
+          placeholder="Filter by Subject Code" 
+          value={filters.subjectCode} 
+          onChange={e => setFilters({...filters, subjectCode: e.target.value})}
+          className="px-4 py-2 border border-slate-200 dark:border-slate-700 bg-transparent rounded-xl text-sm"
+        />
+        <button onClick={fetchReports} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-md">Refresh Reports</button>
+      </div>
+
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden">
+        {loading ? <div className="p-8 text-center text-slate-500">Loading reports...</div> : (
+          <table className="w-full text-left border-collapse text-xs">
+            <thead className="bg-slate-50 dark:bg-slate-950 text-[10px] font-bold text-slate-400 uppercase">
+              <tr>
+                <th className="px-6 py-4">Date</th>
+                <th className="px-6 py-4">Student</th>
+                <th className="px-6 py-4">Roll No</th>
+                <th className="px-6 py-4">Subject</th>
+                <th className="px-6 py-4">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+              {reports.map((r, idx) => (
+                <tr key={idx}>
+                  <td className="px-6 py-4 font-bold">{new Date(r.date).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 font-bold">{r.studentId?.name || 'Unknown'}</td>
+                  <td className="px-6 py-4">{r.rollNumber}</td>
+                  <td className="px-6 py-4 font-semibold">{r.subjectName}</td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase font-sans ${r.status === 'P' ? 'bg-emerald-500/10 text-emerald-500' : r.status === 'A' ? 'bg-rose-500/10 text-rose-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                      {r.status === 'P' ? 'Present' : r.status === 'A' ? 'Absent' : 'Late'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {reports.length === 0 && <tr><td colSpan="5" className="px-6 py-8 text-center text-slate-500">No attendance records found for these filters.</td></tr>}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
@@ -199,10 +289,22 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
   }, []);
   const [newStudName, setNewStudName] = useState('');
   const [newStudEmail, setNewStudEmail] = useState('');
-  const [newStudDept, setNewStudDept] = useState('Computer Science');
-  const [newStudSection, setNewStudSection] = useState('A');
   const [newStudRoll, setNewStudRoll] = useState('');
+  const [newStudId, setNewStudId] = useState('');
+  const [newStudGender, setNewStudGender] = useState('');
+  const [newStudDob, setNewStudDob] = useState('');
   const [newStudPhone, setNewStudPhone] = useState('');
+  const [newStudFatherName, setNewStudFatherName] = useState('');
+  const [newStudMotherName, setNewStudMotherName] = useState('');
+  const [newStudParentMobile, setNewStudParentMobile] = useState('');
+  const [newStudBloodGroup, setNewStudBloodGroup] = useState('');
+  const [newStudDegree, setNewStudDegree] = useState('');
+  const [newStudDept, setNewStudDept] = useState('Computer Science');
+  const [newStudProgramCode, setNewStudProgramCode] = useState('');
+  const [newStudBatch, setNewStudBatch] = useState('');
+  const [newStudSemesterNumber, setNewStudSemesterNumber] = useState('');
+  const [newStudSection, setNewStudSection] = useState('A');
+  const [newStudAddress, setNewStudAddress] = useState('');
 
   // Filtering states
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
@@ -228,20 +330,44 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
       id: studentsList.length + 101,
       name: newStudName,
       email: newStudEmail,
-      semester: 'Spring 2026',
-      blocked: false,
-      department: newStudDept,
-      section: newStudSection,
       rollNumber: newStudRoll,
-      phoneNumber: newStudPhone
+      studentId: newStudId,
+      gender: newStudGender,
+      dateOfBirth: newStudDob,
+      phoneNumber: newStudPhone,
+      mobileNumber: newStudPhone,
+      fatherName: newStudFatherName,
+      motherName: newStudMotherName,
+      parentMobileNumber: newStudParentMobile,
+      bloodGroup: newStudBloodGroup,
+      degree: newStudDegree,
+      department: newStudDept,
+      programCode: newStudProgramCode,
+      batch: newStudBatch,
+      semesterNumber: newStudSemesterNumber,
+      section: newStudSection,
+      address: newStudAddress,
+      blocked: false
     };
     setStudentsList([...studentsList, newStudent]);
     setNewStudName('');
     setNewStudEmail('');
     setNewStudRoll('');
+    setNewStudId('');
+    setNewStudGender('');
+    setNewStudDob('');
     setNewStudPhone('');
+    setNewStudFatherName('');
+    setNewStudMotherName('');
+    setNewStudParentMobile('');
+    setNewStudBloodGroup('');
+    setNewStudDegree('');
     setNewStudDept('Computer Science');
+    setNewStudProgramCode('');
+    setNewStudBatch('');
+    setNewStudSemesterNumber('');
     setNewStudSection('A');
+    setNewStudAddress('');
     setActiveSubTab('all-students');
     triggerLocalToast('success', 'Student added successfully!');
   };
@@ -1064,6 +1190,10 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                   <ShieldCheck className="w-3.5 h-3.5 opacity-75" />
                   <span>Principals</span>
                 </button>
+                <button onClick={() => { setActiveSubTab('faculty-assignments'); if (isMobile) setMobileMenuOpen(false); }} className={itemClass('faculty-assignments')}>
+                  <BookOpen className="w-3.5 h-3.5 opacity-75" />
+                  <span>Assignments</span>
+                </button>
               </div>
             )}
           </div>
@@ -1740,8 +1870,55 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                         <input type="text" placeholder="e.g. CS26001" value={newStudRoll} onChange={(e) => setNewStudRoll(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950" />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Phone Number</label>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Student ID</label>
+                        <input type="text" placeholder="e.g. STU12345" value={newStudId} onChange={(e) => setNewStudId(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950" />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Gender</label>
+                        <select value={newStudGender} onChange={(e) => setNewStudGender(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950 appearance-none">
+                          <option value="">Select Gender</option>
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Date of Birth</label>
+                        <input type="date" value={newStudDob} onChange={(e) => setNewStudDob(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950" />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Mobile Number</label>
                         <input type="tel" placeholder="e.g. +1 234 567 8900" value={newStudPhone} onChange={(e) => setNewStudPhone(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950" />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Father's Name</label>
+                        <input type="text" placeholder="Father's Name" value={newStudFatherName} onChange={(e) => setNewStudFatherName(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950" />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Mother's Name</label>
+                        <input type="text" placeholder="Mother's Name" value={newStudMotherName} onChange={(e) => setNewStudMotherName(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950" />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Parent Mobile Number</label>
+                        <input type="tel" placeholder="Parent Mobile Number" value={newStudParentMobile} onChange={(e) => setNewStudParentMobile(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950" />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Blood Group</label>
+                        <select value={newStudBloodGroup} onChange={(e) => setNewStudBloodGroup(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950 appearance-none">
+                          <option value="">Select Blood Group</option>
+                          <option value="A+">A+</option>
+                          <option value="A-">A-</option>
+                          <option value="B+">B+</option>
+                          <option value="B-">B-</option>
+                          <option value="O+">O+</option>
+                          <option value="O-">O-</option>
+                          <option value="AB+">AB+</option>
+                          <option value="AB-">AB-</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Degree</label>
+                        <input type="text" placeholder="e.g. B.Tech" value={newStudDegree} onChange={(e) => setNewStudDegree(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950" />
                       </div>
                       <div>
                         <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Department (Branch)</label>
@@ -1752,12 +1929,28 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                         </select>
                       </div>
                       <div>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Program Code</label>
+                        <input type="text" placeholder="e.g. BTECH-CS" value={newStudProgramCode} onChange={(e) => setNewStudProgramCode(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950" />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Batch</label>
+                        <input type="text" placeholder="e.g. 2022-2026" value={newStudBatch} onChange={(e) => setNewStudBatch(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950" />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Semester Number</label>
+                        <input type="number" placeholder="e.g. 1" value={newStudSemesterNumber} onChange={(e) => setNewStudSemesterNumber(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950" />
+                      </div>
+                      <div>
                         <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Section</label>
                         <select value={newStudSection} onChange={(e) => setNewStudSection(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950 appearance-none">
                           <option value="A">Section A</option>
                           <option value="B">Section B</option>
                           <option value="C">Section C</option>
                         </select>
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">Address</label>
+                        <textarea placeholder="Student's Residential Address" value={newStudAddress} onChange={(e) => setNewStudAddress(e.target.value)} rows="3" className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/30 text-xs font-semibold bg-slate-50 dark:bg-slate-950"></textarea>
                       </div>
                     </div>
                     <button type="submit" className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all active:scale-95 mt-4">Register Student</button>
@@ -2007,6 +2200,11 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
                     </div>
                   ))}
                 </div>
+              )}
+
+              {/* VIEW 9.5: FACULTY ASSIGNMENTS */}
+              {activeSubTab === 'faculty-assignments' && (
+                <AdminFacultyAssignmentsTab triggerLocalToast={triggerLocalToast} />
               )}
 
               {/* VIEW 9: ALL DEPARTMENTS */}
@@ -2340,36 +2538,7 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
 
               {/* VIEW 15: VIEW ATTENDANCE */}
               {activeSubTab === 'view-attendance' && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-bold font-heading flex items-center gap-2">
-                    <ClipboardList className="w-5 h-5 text-rose-500" />
-                    Student Attendance Matrix
-                  </h3>
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden">
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead className="bg-slate-50 dark:bg-slate-950 text-[10px] font-bold text-slate-400 uppercase">
-                        <tr>
-                          <th className="px-6 py-4">Student</th>
-                          <th className="px-6 py-4">CS-401 Lecture</th>
-                          <th className="px-6 py-4">CS-425 Seminar</th>
-                          <th className="px-6 py-4">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-                        {studentsList.map((s, idx) => (
-                          <tr key={s.id}>
-                            <td className="px-6 py-4 font-bold">{s.name}</td>
-                            <td className="px-6 py-4 font-semibold text-emerald-600">{idx % 2 === 0 ? 'Present (100%)' : 'Present (92%)'}</td>
-                            <td className="px-6 py-4 font-semibold text-emerald-600">Present (100%)</td>
-                            <td className="px-6 py-4">
-                              <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[9px] font-bold uppercase font-sans">Excellent</span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                <AdminAttendanceView triggerLocalToast={triggerLocalToast} />
               )}
 
               {/* VIEW 16: REPORTS */}

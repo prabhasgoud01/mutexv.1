@@ -15,10 +15,11 @@ import {
   studentResetPassword,
 } from '../controllers/authController.js';
 import { protect } from '../middleware/authMiddleware.js';
+import { loginRateLimiter } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
 
-router.post('/login', loginUser);
+router.post('/login', loginRateLimiter, loginUser);
 router.post('/logout', protect, logoutUser);
 router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);

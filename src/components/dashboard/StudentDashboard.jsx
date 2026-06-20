@@ -4,6 +4,7 @@ import {
   LayoutDashboard, FileText, CreditCard, Bell, User, Calendar, Settings,
   ChevronDown, Download, CalendarDays, MessageSquare, Activity, UploadCloud
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 
 // --- Sub-Components (Tabs) ---
@@ -272,20 +273,70 @@ const ProfileTab = () => {
   );
 };
 
-const AttendanceTab = () => {
-  const [data, setData] = useState(null);
-  useEffect(() => { api.get('/student/attendance').then(res => setData(res.data.data)).catch(console.error); }, []);
-  if (!data) return <div className="p-8 text-center text-slate-500">Loading...</div>;
+import { io } from 'socket.io-client';
+
+const AttendanceTab = ({ user }) => {
+  const [stats, setStats] = useState(null);
+  const [history, setHistory] = useState([]);
+  
+  const fetchAttendance = () => {
+    api.get('/attendance/student').then(res => {
+      setStats(res.data.stats);
+      setHistory(res.data.history);
+    }).catch(console.error);
+  };
+
+  useEffect(() => { 
+    fetchAttendance(); 
+
+    // Setup Socket.IO
+    const socket = io(api.defaults.baseURL.replace('/api', ''), {
+      withCredentials: true
+    });
+
+    socket.on('connect', () => {
+      socket.emit('join_student_room', user?._id || user?.id);
+    });
+
+    socket.on('attendance_updated', (data) => {
+      // Opt to reload data on push without toast
+      fetchAttendance(); // Refetch the updated stats instantly
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [user._id]);
+
+  if (!stats) return <div className="p-8 text-center text-slate-500">Loading...</div>;
+
+  const subjectWiseEntries = Object.entries(stats.subjectWise || {});
+
+  // Group history by month for breakdown
+  const monthlyStats = {};
+  history.forEach(record => {
+    const month = new Date(record.date).toLocaleString('default', { month: 'long' });
+    if (!monthlyStats[month]) monthlyStats[month] = { present: 0, total: 0 };
+    monthlyStats[month].total += 1;
+    if (record.status === 'P') monthlyStats[month].present += 1;
+    if (record.status === 'L') monthlyStats[month].present += 0.5;
+  });
+
+  const monthlyBreakdown = Object.entries(monthlyStats).map(([month, data]) => ({
+    month,
+    percentage: Math.round((data.present / data.total) * 100)
+  }));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in">
       <div className="p-6 rounded-3xl bg-gradient-to-r from-teal-500 to-emerald-500 text-white shadow-xl shadow-teal-500/20 flex justify-between items-center">
         <div>
           <p className="text-sm font-semibold text-teal-100 uppercase tracking-wider">Overall Attendance</p>
-          <p className="text-4xl font-heading font-black mt-1">{data.totalPercentage}%</p>
+          <p className="text-4xl font-heading font-black mt-1">{stats.overall || 0}%</p>
         </div>
-        <div className="px-4 py-2 bg-white/20 backdrop-blur-md rounded-xl border border-white/20 font-bold">
-          Status: {data.status}
+        <div className="px-4 py-2 bg-white/20 backdrop-blur-md rounded-xl border border-white/20 font-bold flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
+          Live Updates Active
         </div>
       </div>
 
@@ -293,29 +344,29 @@ const AttendanceTab = () => {
         <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-sm space-y-4">
           <h3 className="text-md font-bold font-heading flex items-center gap-2"><Calendar className="w-5 h-5 text-indigo-500" /> Subject-wise</h3>
           <div className="space-y-4">
-            {data.subjects.map((sub, idx) => (
+            {subjectWiseEntries.length > 0 ? subjectWiseEntries.map(([name, percentage], idx) => (
               <div key={idx} className="space-y-2">
                 <div className="flex justify-between text-xs font-semibold text-slate-600 dark:text-slate-400">
-                  <span>{sub.name}</span>
-                  <span>{sub.attended}/{sub.total} ({sub.percentage}%)</span>
+                  <span>{name}</span>
+                  <span>{percentage}%</span>
                 </div>
                 <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full ${sub.percentage < 75 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${sub.percentage}%` }} />
+                  <div className={`h-full rounded-full ${percentage < 75 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${percentage}%` }} />
                 </div>
               </div>
-            ))}
+            )) : <p className="text-sm text-slate-500">No attendance data yet.</p>}
           </div>
         </div>
         
         <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-sm space-y-4">
           <h3 className="text-md font-bold font-heading flex items-center gap-2"><Clock className="w-5 h-5 text-indigo-500" /> Monthly Breakdown</h3>
           <div className="space-y-4">
-            {data.monthly.map((m, idx) => (
+            {monthlyBreakdown.length > 0 ? monthlyBreakdown.map((m, idx) => (
               <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-800">
                 <span className="font-semibold text-sm">{m.month}</span>
                 <span className="font-bold font-mono text-indigo-600 dark:text-indigo-400">{m.percentage}%</span>
               </div>
-            ))}
+            )) : <p className="text-sm text-slate-500">No history available.</p>}
           </div>
         </div>
       </div>
@@ -545,51 +596,7 @@ const AnnouncementsTab = () => {
 };
 
 const SettingsTab = ({ user }) => {
-  const [profileData, setProfileData] = React.useState({
-    name: user?.name || '',
-    email: user?.email || '',
-    phoneNumber: user?.phoneNumber || '',
-    bio: user?.bio || '',
-    profilePhoto: user?.profilePhoto || '',
-    location: user?.location || '',
-  });
-  const [statusMsg, setStatusMsg] = React.useState('');
-  const fileInputRef = React.useRef(null);
-
-  const handlePhotoUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        setStatusMsg('Image size must be less than 2MB');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfileData(prev => ({ ...prev, profilePhoto: reader.result }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSaveProfile = async () => {
-    try {
-      setStatusMsg('Saving...');
-      const payload = {
-        name: profileData.name,
-        location: profileData.location,
-        phoneNumber: profileData.phoneNumber,
-        bio: profileData.bio,
-        profilePhoto: profileData.profilePhoto
-      };
-      const { data } = await api.put('/auth/profile', payload);
-      setProfileData(prev => ({ ...prev, ...data }));
-      setStatusMsg('Profile updated successfully!');
-      setTimeout(() => setStatusMsg(''), 3000);
-    } catch (error) {
-      console.error('Error saving profile', error);
-      setStatusMsg(error.response?.data?.message || 'Failed to update profile.');
-    }
-  };
+  const navigate = useNavigate();
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -598,101 +605,30 @@ const SettingsTab = ({ user }) => {
           <h2 className="text-2xl font-black font-heading text-slate-900 dark:text-white flex items-center gap-3">
             <Settings className="w-6 h-6 text-indigo-500" /> Account Settings
           </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Manage your personal information and account settings.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Manage your account security and settings.</p>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-10 mt-8">
-          {/* Left: Avatar Column */}
-          <div className="flex flex-col items-center lg:items-start text-center lg:text-left space-y-4">
-            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 w-full">Profile Photo</h3>
-            <div className="relative group mx-auto lg:mx-0">
-              {profileData.profilePhoto ? (
-                <img src={profileData.profilePhoto} alt="Profile" className="w-40 h-40 rounded-full border-4 border-white dark:border-slate-900 shadow-lg object-cover" />
-              ) : (
-                <div className="w-40 h-40 rounded-full bg-slate-100 dark:bg-slate-800 border-4 border-white dark:border-slate-900 shadow-lg overflow-hidden flex items-center justify-center text-4xl font-bold text-slate-300">
-                  {profileData.name.charAt(0)}
-                </div>
-              )}
-              <button onClick={() => fileInputRef.current?.click()} className="absolute bottom-2 right-2 p-2 bg-white dark:bg-slate-800 rounded-full shadow-md border border-slate-100 dark:border-slate-700 hover:bg-slate-50 transition-colors cursor-pointer text-slate-600 dark:text-slate-300">
-                <Activity className="w-4 h-4" />
-              </button>
-            </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 w-full text-center lg:text-left">JPG, PNG or GIF. Max size 2MB.</p>
-            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handlePhotoUpload} />
-            <button onClick={() => fileInputRef.current?.click()} className="w-full py-2.5 px-4 rounded-xl border border-indigo-200 dark:border-indigo-900 text-indigo-600 dark:text-indigo-500 font-bold text-xs flex items-center justify-center gap-2 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
-              <UploadCloud className="w-4 h-4" />
-              Upload Photo
-            </button>
-          </div>
-
-          {/* Right: Info Column */}
+        <div className="grid grid-cols-1 gap-10 mt-8">
           <div className="space-y-6">
-            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Personal Information</h3>
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Security</h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Full Name</label>
-                <input type="text" value={profileData.name} onChange={(e) => setProfileData({...profileData, name: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" />
-              </div>
-              
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Email Address</label>
-                <input type="email" disabled value={profileData.email} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 text-slate-500 text-sm focus:outline-none cursor-not-allowed" />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Phone Number</label>
-                <div className="flex">
-                  <div className="relative border border-r-0 border-slate-200 dark:border-slate-800 rounded-l-xl bg-slate-50 dark:bg-slate-900 px-3 py-2.5 flex items-center gap-1 shrink-0">
-                    <span className="text-lg">🇺🇸</span>
-                  </div>
-                  <input type="tel" value={profileData.phoneNumber} onChange={(e) => setProfileData({...profileData, phoneNumber: e.target.value})} className="w-full px-4 py-2.5 rounded-r-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Location</label>
-                <input type="text" value={profileData.location} onChange={(e) => setProfileData({...profileData, location: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" />
-              </div>
-
-              <div className="space-y-1.5 md:col-span-2">
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Bio (Optional)</label>
-                <textarea rows="3" value={profileData.bio} onChange={(e) => setProfileData({...profileData, bio: e.target.value})} placeholder="Tell us a little about yourself..." className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all resize-none"></textarea>
-                <div className="text-[10px] text-slate-400 text-right">{(profileData.bio || '').length} / 160</div>
-              </div>
-            </div>
-
-            <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+            <div className="flex items-center justify-between p-4 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950/50">
               <div>
-                {statusMsg && <p className="text-sm font-bold text-emerald-500">{statusMsg}</p>}
+                <p className="font-bold text-sm text-slate-800 dark:text-slate-200">Password</p>
+                <p className="text-xs text-slate-500 mt-1">Change your account password securely.</p>
               </div>
               <button 
-                type="button"
-                onClick={handleSaveProfile}
+                onClick={() => navigate('/change-password')}
                 className="px-6 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 transition-all"
               >
-                Save Changes
+                Reset Password
               </button>
             </div>
           </div>
         </div>
 
-        <hr className="border-slate-200 dark:border-slate-800 my-8" />
-        
-        <div className="space-y-4">
-          <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Notification Preferences</h4>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-slate-100 border-slate-300" defaultChecked />
-            <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Email notifications for assignments</span>
-          </label>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-slate-100 border-slate-300" defaultChecked />
-            <span className="text-sm font-medium text-slate-600 dark:text-slate-400">SMS alerts for fee payments</span>
-          </label>
-        </div>
-        
-        <p className="mt-6 text-xs text-slate-400 bg-rose-50 dark:bg-rose-950/20 p-3 rounded-xl text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30">
-          Role changes and academic modifications are restricted. Contact administration for these updates.
+        <p className="mt-6 text-xs text-slate-400 bg-indigo-50 dark:bg-indigo-950/20 p-3 rounded-xl text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30">
+          Other profile updates have been restricted. Contact administration for any profile modifications.
         </p>
       </div>
     </div>
@@ -868,7 +804,7 @@ export default function StudentDashboard({ user, onLogout, currentTime }) {
 
               {dropdownOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 py-2 z-50 animate-in fade-in slide-in-from-top-2">
-                  <button onClick={() => {setActiveTab('personal'); setDropdownOpen(false)}} className="w-full text-left px-4 py-2 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-2"><User className="w-4 h-4 text-slate-400"/> Profile</button>
+                  <button onClick={() => {setActiveTab('profile'); setDropdownOpen(false)}} className="w-full text-left px-4 py-2 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-2"><User className="w-4 h-4 text-slate-400"/> Profile</button>
                   <button onClick={() => {setActiveTab('settings'); setDropdownOpen(false)}} className="w-full text-left px-4 py-2 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-2"><Settings className="w-4 h-4 text-slate-400"/> Settings</button>
                   <div className="h-px bg-slate-200 dark:bg-slate-800 my-1"></div>
                   <button onClick={onLogout} className="w-full text-left px-4 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors flex items-center gap-2"><LogOut className="w-4 h-4"/> Logout</button>
@@ -887,7 +823,7 @@ export default function StudentDashboard({ user, onLogout, currentTime }) {
             {activeTab === 'announcements' && <AnnouncementsTab />}
             {activeTab === 'calendar' && <CalendarTab />}
             {activeTab === 'profile' && <ProfileTab />}
-            {activeTab === 'attendance' && <AttendanceTab />}
+            {activeTab === 'attendance' && <AttendanceTab user={user} />}
             {activeTab === 'feedback' && <FeedbackTab />}
             {activeTab === 'settings' && <SettingsTab user={user} />}
           </div>

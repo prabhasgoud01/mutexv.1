@@ -19,6 +19,7 @@ import { getSubjects, addSubject, deleteSubject, deleteMultipleSubjects } from '
 import { uploadStudents, uploadFaculty, uploadSubjects, uploadDepartments } from '../controllers/uploadController.js';
 import { getDepartments, addDepartment, deleteDepartment } from '../controllers/departmentController.js';
 import { uploadResults, getAdminResults, blockResult, unblockResult, deleteResult } from '../controllers/resultController.js';
+import { createAssignment, getAdminAssignments, updateAssignment, deleteAssignment } from '../controllers/facultyAssignmentController.js';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -73,5 +74,11 @@ router.post('/upload-results', upload.single('file'), uploadResults);
 router.put('/block-result/:id', blockResult);
 router.put('/unblock-result/:id', unblockResult);
 router.delete('/delete-result/:id', deleteResult);
+
+// Faculty Assignment Routes
+router.post('/assign-subjects', createAssignment);
+router.get('/faculty-assignments', getAdminAssignments);
+router.put('/update-assignment/:id', updateAssignment);
+router.delete('/delete-assignment/:id', deleteAssignment);
 
 export default router;
