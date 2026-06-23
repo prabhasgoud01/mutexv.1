@@ -13,6 +13,7 @@ import {
   adminResetPassword,
   facultyResetPassword,
   studentResetPassword,
+  registerSuperAdmin,
 } from '../controllers/authController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { loginRateLimiter } from '../middleware/rateLimiter.js';
@@ -20,6 +21,7 @@ import { loginRateLimiter } from '../middleware/rateLimiter.js';
 const router = express.Router();
 
 router.post('/login', loginRateLimiter, loginUser);
+router.post('/superadmin/signup', registerSuperAdmin);
 router.post('/logout', protect, logoutUser);
 router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);

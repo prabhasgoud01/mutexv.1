@@ -5,7 +5,7 @@ import {
   Server, LogOut, Bell, Calendar, FileText, Settings, X, ChevronDown,
   ChevronRight, Activity, Cpu, Database, CheckCircle, Users, Send, Check,
   Info, Menu, Home, GraduationCap, ShieldCheck, Building2, Book,
-  ClipboardList, BarChart3, MessageSquare, AlertTriangle, UserCheck, PlusCircle, UploadCloud, Trash2, Download, BookOpen
+  ClipboardList, BarChart3, MessageSquare, AlertTriangle, UserCheck, PlusCircle, UploadCloud, Trash2, Download, BookOpen, CreditCard
 } from 'lucide-react';
 import api from '../../services/api';
 
@@ -231,7 +231,8 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
     attendance: false,
     results: false,
     announcements: false,
-    academic: false
+    academic: false,
+    payments: false
   });
 
   const toggleAccordion = (key) => {
@@ -1040,6 +1041,65 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
     }
   };
 
+  // 8. Payments States
+  const [paymentsList, setPaymentsList] = useState([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [newPayName, setNewPayName] = useState('');
+  const [newPayId, setNewPayId] = useState('');
+  const [newPayDate, setNewPayDate] = useState('');
+  const [newPayStatus, setNewPayStatus] = useState('Paid');
+  const [newPayMode, setNewPayMode] = useState('UPI');
+  const [newPayAmount, setNewPayAmount] = useState('');
+  const [newPayDue, setNewPayDue] = useState('');
+
+  const fetchPayments = async () => {
+    setPaymentsLoading(true);
+    try {
+      const res = await api.get('/payments');
+      setPaymentsList(res.data.data || []);
+    } catch (error) {
+      console.error('Failed to fetch payments:', error);
+      triggerLocalToast('error', 'Failed to load payments');
+    } finally {
+      setPaymentsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSubTab === 'view-payments') {
+      fetchPayments();
+    }
+  }, [activeSubTab]);
+
+  const handleAddPayment = async (e) => {
+    e.preventDefault();
+    if (!newPayName || !newPayId || !newPayDate || !newPayStatus || !newPayMode || newPayAmount === '' || newPayDue === '') {
+      return triggerLocalToast('error', 'Complete all required fields.');
+    }
+    try {
+      await api.post('/payments', {
+        studentName: newPayName,
+        idNo: newPayId,
+        dateOfPayment: newPayDate,
+        status: newPayStatus,
+        mode: newPayMode,
+        amountPaid: Number(newPayAmount),
+        dueAmount: Number(newPayDue)
+      });
+      triggerLocalToast('success', 'Payment added successfully!');
+      setNewPayName('');
+      setNewPayId('');
+      setNewPayDate('');
+      setNewPayStatus('Paid');
+      setNewPayMode('UPI');
+      setNewPayAmount('');
+      setNewPayDue('');
+      setActiveSubTab('view-payments');
+    } catch (error) {
+      triggerLocalToast('error', error.response?.data?.message || 'Failed to add payment');
+    }
+  };
+
   // Reusable Sidebar Render Module
   const renderSidebarMenu = (isMobile = false) => {
     const isSelected = (tab) => activeSubTab === tab;
@@ -1367,6 +1427,29 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
             )}
           </div>
 
+          {/* Collapsible 9: Payments */}
+          <div>
+            <button onClick={() => toggleAccordion('payments')} className={headerClass('payments')}>
+              <div className="flex items-center gap-3">
+                <CreditCard className="w-4.5 h-4.5 opacity-80 text-slate-500" />
+                <span>Payments</span>
+              </div>
+              <ChevronDown className={`w-3.5 h-3.5 opacity-60 transition-transform ${accordions.payments ? 'rotate-0' : '-rotate-90'}`} />
+            </button>
+            {accordions.payments && (
+              <div className="pl-4 mt-0.5 space-y-0.5 border-l border-slate-100 dark:border-slate-800 ml-5">
+                <button onClick={() => { setActiveSubTab('view-payments'); if (isMobile) setMobileMenuOpen(false); }} className={itemClass('view-payments')}>
+                  <CreditCard className="w-3.5 h-3.5 opacity-75" />
+                  <span>View Fees</span>
+                </button>
+                <button onClick={() => { setActiveSubTab('add-payment'); if (isMobile) setMobileMenuOpen(false); }} className={itemClass('add-payment')}>
+                  <CreditCard className="w-3.5 h-3.5 opacity-75" />
+                  <span>Add Payment</span>
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Logs */}
           <button
             onClick={() => {
@@ -1518,6 +1601,146 @@ export default function AdminDashboard({ user, onLogout, currentTime }) {
               transition={{ duration: 0.25 }}
               className="space-y-8"
             >
+
+              {/* VIEW: PAYMENTS LIST */}
+              {activeSubTab === 'view-payments' && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-2xl font-black font-heading text-slate-900 dark:text-white flex items-center gap-3">
+                        <CreditCard className="w-6 h-6 text-rose-500" />
+                        Fee Details & Payments
+                      </h2>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Monitor all student fee transactions and dues.</p>
+                    </div>
+                    <button onClick={() => setActiveSubTab('add-payment')} className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-bold shadow-md shadow-rose-600/20 transition-all flex items-center gap-2">
+                      <PlusCircle className="w-4 h-4" /> Add Payment
+                    </button>
+                  </div>
+
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden">
+                    {paymentsLoading ? (
+                      <div className="p-8 text-center text-slate-500">Loading payments...</div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse text-sm">
+                          <thead className="bg-slate-50 dark:bg-slate-950 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            <tr>
+                              <th className="px-6 py-4">Student</th>
+                              <th className="px-6 py-4">ID No</th>
+                              <th className="px-6 py-4">Date</th>
+                              <th className="px-6 py-4">Mode</th>
+                              <th className="px-6 py-4">Amount Paid</th>
+                              <th className="px-6 py-4">Due</th>
+                              <th className="px-6 py-4">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+                            {studentsList.map((student, idx) => {
+                              const payment = paymentsList.find(p => p.idNo === student.rollNumber || p.idNo === student.studentId || p.studentName === student.name);
+                              const p = {
+                                studentName: student.name,
+                                idNo: student.rollNumber || student.studentId || 'N/A',
+                                dateOfPayment: payment ? new Date(payment.dateOfPayment).toLocaleDateString() : 'N/A',
+                                mode: payment ? payment.mode : 'N/A',
+                                amountPaid: payment ? payment.amountPaid : 0,
+                                dueAmount: payment ? payment.dueAmount : 88000,
+                                status: payment ? payment.status : 'Pending'
+                              };
+                              return (
+                                <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                  <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-200">{p.studentName}</td>
+                                  <td className="px-6 py-4 font-mono text-xs">{p.idNo}</td>
+                                  <td className="px-6 py-4">{p.dateOfPayment}</td>
+                                  <td className="px-6 py-4 font-semibold">{p.mode}</td>
+                                  <td className="px-6 py-4 font-bold text-emerald-600">₹{p.amountPaid}</td>
+                                  <td className="px-6 py-4 font-bold text-rose-500">₹{p.dueAmount}</td>
+                                  <td className="px-6 py-4">
+                                    <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase ${p.status === 'Paid' ? 'bg-emerald-500/10 text-emerald-600' : p.status === 'Failed' ? 'bg-rose-500/10 text-rose-600' : 'bg-amber-500/10 text-amber-600'}`}>
+                                      {p.status}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                            {studentsList.length === 0 && (
+                              <tr><td colSpan="7" className="px-6 py-8 text-center text-slate-500">No student records found.</td></tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* VIEW: ADD PAYMENT */}
+              {activeSubTab === 'add-payment' && (
+                <div className="space-y-6 max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="flex items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+                    <button onClick={() => setActiveSubTab('view-payments')} className="p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                      <ChevronRight className="w-5 h-5 text-slate-500 rotate-180" />
+                    </button>
+                    <div>
+                      <h2 className="text-xl font-black font-heading flex items-center gap-2">
+                        <CreditCard className="w-5 h-5 text-rose-500" /> Record New Payment
+                      </h2>
+                      <p className="text-xs text-slate-500 mt-1 font-semibold">Enter the fee details and payment transaction information manually.</p>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleAddPayment} className="p-6 md:p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/60 dark:border-slate-800/80 shadow-sm space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Student Name</label>
+                        <input type="text" value={newPayName} onChange={e => setNewPayName(e.target.value)} required className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:ring-1 focus:ring-rose-500 focus:border-rose-500" placeholder="e.g. John Doe" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Student ID / Roll No</label>
+                        <input type="text" value={newPayId} onChange={e => setNewPayId(e.target.value)} required className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:ring-1 focus:ring-rose-500 focus:border-rose-500" placeholder="e.g. CS2024-001" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Date of Payment</label>
+                        <input type="date" value={newPayDate} onChange={e => setNewPayDate(e.target.value)} required className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:ring-1 focus:ring-rose-500 focus:border-rose-500" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Payment Status</label>
+                        <select value={newPayStatus} onChange={e => setNewPayStatus(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:ring-1 focus:ring-rose-500">
+                          <option value="Paid">Paid</option>
+                          <option value="Pending">Pending</option>
+                          <option value="Failed">Failed</option>
+                          <option value="Processing">Processing</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Payment Mode</label>
+                        <select value={newPayMode} onChange={e => setNewPayMode(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:ring-1 focus:ring-rose-500">
+                          <option value="UPI">UPI</option>
+                          <option value="Credit Card">Credit Card</option>
+                          <option value="Debit Card">Debit Card</option>
+                          <option value="Net Banking">Net Banking</option>
+                          <option value="Cash">Cash</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Amount Paid ($)</label>
+                        <input type="number" value={newPayAmount} onChange={e => setNewPayAmount(e.target.value)} required min="0" className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:ring-1 focus:ring-rose-500 focus:border-rose-500" placeholder="0.00" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Due Amount ($)</label>
+                        <input type="number" value={newPayDue} onChange={e => setNewPayDue(e.target.value)} required min="0" className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:ring-1 focus:ring-rose-500 focus:border-rose-500" placeholder="0.00" />
+                      </div>
+                    </div>
+
+                    <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
+                      <button type="button" onClick={() => setActiveSubTab('view-payments')} className="px-6 py-2.5 rounded-xl font-bold text-sm bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">Cancel</button>
+                      <button type="submit" className="px-6 py-2.5 rounded-xl font-bold text-sm bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-500/30 transition-all flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4" /> Save Payment
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
 
               {/* VIEW 0: PROFILE MANAGEMENT */}
               {activeSubTab === 'profile' && (

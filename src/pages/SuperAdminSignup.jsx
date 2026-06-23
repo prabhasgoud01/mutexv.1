@@ -1,17 +1,20 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { Eye, EyeOff, ShieldCheck, AlertCircle, Terminal } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, Terminal, UserPlus } from 'lucide-react';
 import Toast from '../components/Toast';
+import api from '../services/api';
 
-export default function SuperAdminLogin() {
+export default function SuperAdminSignup() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
 
-  const { login, user } = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
   const navigate = useNavigate();
 
   // Redirect if already logged in as superadmin
@@ -23,18 +26,28 @@ export default function SuperAdminLogin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (password !== confirmPassword) {
+      setToast({ show: true, message: 'Passwords do not match', type: 'error' });
+      return;
+    }
+    
     setIsLoading(true);
     
-    // Attempt login with role 'superadmin'
-    const result = await login(email, password, 'superadmin');
-    
-    if (result.success) {
-      setToast({ show: true, message: 'Login successful!', type: 'success' });
-      navigate('/dashboard/super-admin');
-    } else {
-      setToast({ show: true, message: result.message || 'Login failed', type: 'error' });
+    try {
+      const response = await api.post('/auth/superadmin/signup', { name, email, password });
+      
+      if (response.status === 201) {
+        setToast({ show: true, message: 'Registration successful! Please log in.', type: 'success' });
+        setTimeout(() => {
+          navigate('/super-admin-login');
+        }, 1500);
+      }
+    } catch (error) {
+      setToast({ show: true, message: error.response?.data?.message || 'Registration failed', type: 'error' });
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (
@@ -52,16 +65,32 @@ export default function SuperAdminLogin() {
           <Terminal className="h-8 w-8 text-white" />
         </div>
         <h2 className="text-center text-3xl font-extrabold text-white tracking-tight">
-          Super Admin Access
+          Super Admin Setup
         </h2>
         <p className="mt-2 text-center text-sm text-slate-400">
-          Authorized personnel only. Secure terminal.
+          Register a new master account.
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <div className="bg-slate-900/80 backdrop-blur-xl py-8 px-4 shadow-[0_0_40px_-15px_rgba(79,70,229,0.3)] sm:rounded-2xl sm:px-10 border border-slate-800/50">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form className="space-y-5" onSubmit={handleSubmit}>
+            <div>
+              <label className="block text-sm font-medium text-slate-300">
+                Full Name
+              </label>
+              <div className="mt-1 relative">
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="appearance-none block w-full px-3 py-3 bg-slate-950/50 border border-slate-700 rounded-xl shadow-sm placeholder-slate-500 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all duration-200"
+                  placeholder="System Administrator"
+                />
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-slate-300">
                 System Email
@@ -103,12 +132,25 @@ export default function SuperAdminLogin() {
                   )}
                 </button>
               </div>
-              <div className="text-right mt-1">
-                <Link to="/super-admin-forgot-password" className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">Forgot Password?</Link>
-              </div>
             </div>
 
             <div>
+              <label className="block text-sm font-medium text-slate-300">
+                Confirm Security Passkey
+              </label>
+              <div className="mt-1 relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="appearance-none block w-full px-3 py-3 bg-slate-950/50 border border-slate-700 rounded-xl shadow-sm placeholder-slate-500 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all duration-200"
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+
+            <div className="pt-2">
               <button
                 type="submit"
                 disabled={isLoading}
@@ -118,8 +160,8 @@ export default function SuperAdminLogin() {
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                 ) : (
                   <span className="flex items-center">
-                    <ShieldCheck className="w-5 h-5 mr-2" />
-                    Authenticate
+                    <UserPlus className="w-5 h-5 mr-2" />
+                    Register Account
                   </span>
                 )}
               </button>
@@ -132,9 +174,9 @@ export default function SuperAdminLogin() {
               <span>Platform-wide access controls are active.</span>
             </div>
             <div className="text-sm text-slate-400">
-              Don't have an account?{' '}
-              <Link to="/super-admin-signup" className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
-                Sign up here
+              Already have an account?{' '}
+              <Link to="/super-admin-login" className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
+                Sign in here
               </Link>
             </div>
           </div>

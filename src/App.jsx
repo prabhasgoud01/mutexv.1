@@ -16,6 +16,7 @@ import ChangePassword from './pages/ChangePassword';
 import ProtectedRoute from './routes/ProtectedRoute';
 import Dashboard from './components/Dashboard';
 import SuperAdminLogin from './pages/SuperAdminLogin';
+import SuperAdminSignup from './pages/SuperAdminSignup';
 import SuperAdminDashboard from './components/dashboard/SuperAdminDashboard';
 
 
@@ -41,6 +42,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/student-login" replace />} />
 
           <Route path="/super-admin-login" element={<SuperAdminLogin />} />
+          <Route path="/super-admin-signup" element={<SuperAdminSignup />} />
           <Route path="/student-login" element={<StudentLogin />} />
           <Route path="/faculty-login" element={<FacultyLogin />} />
           <Route path="/admin-login" element={<AdminLogin />} />

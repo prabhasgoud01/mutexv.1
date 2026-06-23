@@ -115,7 +115,7 @@ export const loginUser = async (req, res) => {
       }
     }
 
-    const token = generateToken(res, user._id, user.role);
+    const token = generateToken(res, user._id, user.role, 'ERP_MASTER');
 
     res.json({
       _id: user._id,
@@ -130,6 +130,51 @@ export const loginUser = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error during login' });
+  }
+};
+
+// @desc    Register a new Super Admin
+// @route   POST /api/auth/superadmin/signup
+// @access  Public
+export const registerSuperAdmin = async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    const userExists = await SuperAdmin.findOne({ email });
+
+    if (userExists) {
+      return res.status(400).json({ message: 'User already exists' });
+    }
+
+    const superAdmin = await SuperAdmin.create({
+      name,
+      email,
+      password,
+      role: 'superadmin',
+    });
+
+    if (superAdmin) {
+      // In a real system, you might not auto-login, or you might require approval.
+      // We'll auto-login here to match normal signup flow.
+      const token = generateToken(res, superAdmin._id, superAdmin.role, 'ERP_MASTER');
+      
+      res.status(201).json({
+        _id: superAdmin._id,
+        name: superAdmin.name,
+        email: superAdmin.email,
+        role: superAdmin.role,
+        token,
+      });
+    } else {
+      res.status(400).json({ message: 'Invalid user data' });
+    }
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(val => val.message);
+      return res.status(400).json({ message: messages.join(', ') });
+    }
+    console.error('Error in registerSuperAdmin:', error);
+    res.status(500).json({ message: 'Server error during signup' });
   }
 };
 

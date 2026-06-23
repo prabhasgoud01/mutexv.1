@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -17,6 +17,7 @@ import path from 'path';
 import http from 'http';
 import { Server } from 'socket.io';
 import attendanceRoutes from './routes/attendanceRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
 
 // Load env vars
 dotenv.config();
@@ -68,6 +69,7 @@ app.use('/api/faculty', facultyRoutes);
 app.use('/api/super-admin', superAdminRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Serve static uploads
 const __dirname = path.resolve();

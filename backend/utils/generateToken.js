@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 
-const generateToken = (res, userId, role) => {
-  const token = jwt.sign({ userId, role }, process.env.JWT_SECRET, {
+const generateToken = (res, userId, role, dbName = 'ERP_MASTER') => {
+  const token = jwt.sign({ userId, role, dbName }, process.env.JWT_SECRET, {
     expiresIn: '7d', // Token expires in 7 days
   });
 
